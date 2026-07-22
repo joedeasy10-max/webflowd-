@@ -6,6 +6,7 @@ import { findOrCreateContact, type ContactIdentity } from "../repos/contacts.js"
 import {
   appendMessage,
   createConversation,
+  getRecentMessages,
   setConversationStatus,
 } from "../repos/conversations.js";
 import { classifySpam } from "./spam.js";
@@ -137,4 +138,83 @@ export async function ingestInboundMessage(
     escalated: turn.escalated,
     spam: false,
   };
+}
+
+export interface ConversationTurnResult {
+  reply: string;
+  escalated: boolean;
+}
+
+/**
+ * Run one assistant turn inside an EXISTING conversation, carrying prior message
+ * history for context. Appends the customer's message and the AI reply, and
+ * audit-logs the reply. Used by turn-based channels like the voice receptionist
+ * (each `<Gather>` speech result is one turn). Tenant-scoped — call inside
+ * `runInTenant`.
+ */
+export async function replyInConversation(
+  ctx: TenantContext,
+  input: {
+    conversationId: string;
+    customerText: string;
+    channel: ChannelType;
+    tenantData: TenantPromptData;
+    model: ModelClient;
+    env?: NodeJS.ProcessEnv;
+    db?: Database;
+    historyLimit?: number;
+  },
+): Promise<ConversationTurnResult> {
+  const db = input.db ?? getDb();
+
+  // History BEFORE appending the new inbound message.
+  const prior = await getRecentMessages(ctx, input.conversationId, input.historyLimit ?? 20, db);
+  const history: EngineHistoryItem[] = prior.map((m) => ({
+    role: m.role === "ai" || m.role === "owner" ? "ai" : "customer",
+    body: m.body,
+  }));
+
+  await appendMessage(
+    ctx,
+    {
+      conversationId: input.conversationId,
+      direction: "inbound",
+      role: "customer",
+      body: input.customerText,
+    },
+    db,
+  );
+
+  const turn = await runAssistantTurn(ctx, {
+    tenantData: input.tenantData,
+    history,
+    customerText: input.customerText,
+    channel: input.channel,
+    model: input.model,
+    deps: { db, conversationId: input.conversationId, env: input.env ?? process.env },
+  });
+
+  await appendMessage(
+    ctx,
+    {
+      conversationId: input.conversationId,
+      direction: "outbound",
+      role: "ai",
+      body: turn.replyText,
+    },
+    db,
+  );
+  await writeAudit(
+    {
+      tenantId: ctx.tenantId,
+      actor: "ai",
+      action: "reply.sent",
+      entityType: "conversation",
+      entityId: input.conversationId,
+      metadata: { channel: input.channel, escalated: turn.escalated },
+    },
+    db,
+  );
+
+  return { reply: turn.replyText, escalated: turn.escalated };
 }
