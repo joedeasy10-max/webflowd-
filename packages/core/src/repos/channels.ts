@@ -34,6 +34,68 @@ export async function getChatChannel(ctx: TenantContext, database: Database = ge
   return row ?? null;
 }
 
+/** The tenant's voice (phone) channel, if they've set one up. */
+export async function getVoiceChannel(ctx: TenantContext, database: Database = getDb()) {
+  const row = await database.query.channels.findFirst({
+    where: and(eq(channels.tenantId, ctx.tenantId), eq(channels.type, "voice")),
+  });
+  return row ?? null;
+}
+
+export async function getChannelById(
+  ctx: TenantContext,
+  channelId: string,
+  database: Database = getDb(),
+) {
+  const row = await database.query.channels.findFirst({
+    where: and(eq(channels.id, channelId), eq(channels.tenantId, ctx.tenantId)),
+  });
+  return row ?? null;
+}
+
+export interface VoiceChannelInput {
+  identifier: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+/**
+ * Create or update the tenant's voice channel. The phone number is the channel
+ * `identifier` (used to resolve the tenant on inbound calls); tuning knobs
+ * (greeting/voice/language/timeout) live in `inbound_config`. One voice channel
+ * per tenant.
+ */
+export async function upsertVoiceChannel(
+  ctx: TenantContext,
+  input: VoiceChannelInput,
+  database: Database = getDb(),
+) {
+  const existing = await getVoiceChannel(ctx, database);
+  if (existing) {
+    const [row] = await database
+      .update(channels)
+      .set({
+        identifier: input.identifier,
+        enabled: input.enabled,
+        inboundConfig: input.config,
+      })
+      .where(and(eq(channels.id, existing.id), eq(channels.tenantId, ctx.tenantId)))
+      .returning();
+    return row!;
+  }
+  const [row] = await database
+    .insert(channels)
+    .values({
+      tenantId: ctx.tenantId,
+      type: "voice",
+      identifier: input.identifier,
+      enabled: input.enabled,
+      inboundConfig: input.config,
+    })
+    .returning();
+  return row!;
+}
+
 export interface ResolvedChannel {
   tenantId: string;
   channelId: string;

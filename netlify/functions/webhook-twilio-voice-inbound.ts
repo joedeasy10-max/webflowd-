@@ -1,7 +1,9 @@
 import type { Config } from "@netlify/functions";
+import type { VoiceChannelConfig } from "@webflowd/shared";
 import {
   createConversation,
   findOrCreateContact,
+  getChannelById,
   getProfile,
   resolveChannelByIdentifier,
   runInTenant,
@@ -59,10 +61,17 @@ export default async (req: Request): Promise<Response> => {
     );
     const profile = await getProfile(ctx, tx);
     const name = profile?.displayName ?? "the team";
+    const channel = await getChannelById(ctx, resolved.channelId, tx);
+    const cfg = (channel?.inboundConfig ?? {}) as VoiceChannelConfig;
     const actionUrl = absoluteUrl(req, `/webhooks/twilio/voice-turn?cid=${conversation.id}`);
     return sayAndGather({
-      say: `Hi, you've reached ${name}. I'm the virtual assistant — how can I help you today?`,
+      say:
+        cfg.greeting ||
+        `Hi, you've reached ${name}. I'm the virtual assistant — how can I help you today?`,
       actionUrl,
+      voice: cfg.voice,
+      language: cfg.language,
+      speechTimeoutSec: cfg.speechTimeoutSec ?? null,
     });
   });
 

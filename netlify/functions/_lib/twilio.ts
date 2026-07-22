@@ -65,12 +65,15 @@ export function sayAndGather(opts: {
   actionUrl: string;
   voice?: string;
   language?: string;
+  /** Seconds of silence to end a turn, or null/undefined for adaptive "auto". */
+  speechTimeoutSec?: number | null;
 }): string {
   const voice = opts.voice ?? "Polly.Amy"; // UK English neural voice
   const language = opts.language ?? "en-GB";
+  const speechTimeout = opts.speechTimeoutSec ? String(opts.speechTimeoutSec) : "auto";
   return (
     `<Gather input="speech" action="${escapeXml(opts.actionUrl)}" method="POST"` +
-    ` speechTimeout="auto" language="${language}" actionOnEmptyResult="true">` +
+    ` speechTimeout="${speechTimeout}" language="${language}" actionOnEmptyResult="true">` +
     `<Say voice="${voice}" language="${language}">${escapeXml(opts.say)}</Say>` +
     `</Gather>`
   );

@@ -10,6 +10,12 @@ runs on Netlify Functions as-is.
 > turns and no interruption ("barge-in"). Full real-time conversational voice
 > (Twilio Media Streams + streaming STT/TTS) is a separate, always-on service.
 
+**Owners do this themselves in the app.** The signed-in dashboard has a **Phone**
+tab with a step-by-step wizard: enter your number, copy the exact webhook URLs to
+paste into Twilio, and tune the greeting, voice, language and pause length —
+saved to your `voice` channel and applied on the next call with no redeploy. The
+reference below documents the same steps for operators.
+
 ## Endpoints
 
 | Purpose | Path |

@@ -1,3 +1,4 @@
+import { TTS_VOICES } from "@webflowd/shared";
 import { api, ApiError } from "./api.js";
 import { field, h, toast } from "./dom.js";
 import { env } from "./env.js";
@@ -871,6 +872,189 @@ export function quotesStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Phone (voice receptionist)
+// ---------------------------------------------------------------------------
+interface PhoneSettings {
+  configured: boolean;
+  number?: string;
+  enabled?: boolean;
+  greeting?: string;
+  voice?: string;
+  language?: string;
+  speechTimeoutSec?: number | null;
+}
+
+const VOICE_INBOUND_PATH = "/webhooks/twilio/voice-inbound";
+const VOICE_STATUS_PATH = "/webhooks/twilio/voice";
+const VOICE_RECORDING_PATH = "/webhooks/twilio/recording";
+
+function copyRow(label: string, url: string): HTMLElement {
+  const value = h("code", { class: "copy-url" }, [url]);
+  const btn = h(
+    "button",
+    {
+      type: "button",
+      class: "link",
+      onclick: async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          toast("Copied");
+        } catch {
+          toast("Copy failed — select and copy manually", "error");
+        }
+      },
+    },
+    ["Copy"],
+  );
+  return h("div", { class: "url-row" }, [h("span", { class: "muted" }, [label]), value, btn]);
+}
+
+function tutorial(origin: string): HTMLElement {
+  const steps: Array<[string, Node[]]> = [
+    [
+      "Get a phone number",
+      [
+        document.createTextNode(
+          "In the Twilio Console, buy a phone number with Voice capability (Phone Numbers → Buy a number), or use one you already own.",
+        ),
+      ],
+    ],
+    [
+      "Save your number here",
+      [
+        document.createTextNode(
+          "Enter that number below in E.164 format (e.g. +441234567890) and click Save. This links the number to your account.",
+        ),
+      ],
+    ],
+    [
+      "Point Twilio at the receptionist",
+      [
+        document.createTextNode(
+          "In Twilio: Phone Numbers → Manage → your number → Voice Configuration. Under “A call comes in”, choose Webhook, set HTTP POST, and paste:",
+        ),
+        copyRow("A call comes in (POST)", origin + VOICE_INBOUND_PATH),
+      ],
+    ],
+    [
+      "Optional — missed-call text-back",
+      [
+        document.createTextNode(
+          "Under “Call status changes”, paste the status URL (POST). If a call goes unanswered we'll automatically text the caller back.",
+        ),
+        copyRow("Call status changes (POST)", origin + VOICE_STATUS_PATH),
+        copyRow("Voicemail recording (POST)", origin + VOICE_RECORDING_PATH),
+      ],
+    ],
+    [
+      "Add your Twilio keys (one-time)",
+      [
+        document.createTextNode(
+          "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_SMS_FROM in your Netlify environment variables. The auth token is what verifies each call is really from Twilio.",
+        ),
+      ],
+    ],
+    [
+      "Call it and tune",
+      [
+        document.createTextNode(
+          "Ring your number to test. Then adjust the greeting, voice and pause length below and Save — changes apply on the next call, no redeploy needed.",
+        ),
+      ],
+    ],
+  ];
+  return h(
+    "ol",
+    { class: "tutorial" },
+    steps.map(([t, body]) =>
+      h("li", {}, [h("strong", {}, [t]), h("div", { class: "tutorial-body" }, body)]),
+    ),
+  );
+}
+
+export function phoneStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+  const origin = window.location.origin;
+  const reload = () =>
+    renderInto(container, async () => {
+      const s = await api.get<PhoneSettings>("/api/phone");
+
+      const number = input("number", s.number ?? "", "tel");
+      const greeting = textarea("greeting", s.greeting ?? "");
+      const enabled = h("input", { type: "checkbox", name: "enabled" }) as HTMLInputElement;
+      enabled.checked = s.enabled ?? true;
+
+      const voice = h("select", { name: "voice", class: "input" }, [
+        ...TTS_VOICES.map((v) =>
+          h("option", { value: v, ...(s.voice === v ? { selected: "selected" } : {}) }, [v]),
+        ),
+      ]) as HTMLSelectElement;
+      const language = input("language", s.language ?? "en-GB");
+      const speechTimeout = input(
+        "speechTimeoutSec",
+        s.speechTimeoutSec != null ? String(s.speechTimeoutSec) : "",
+        "number",
+      );
+
+      const form = h(
+        "form",
+        {
+          onsubmit: async (e: Event) => {
+            e.preventDefault();
+            const t = speechTimeout.value.trim();
+            try {
+              await api.put("/api/phone", {
+                number: number.value.trim(),
+                enabled: enabled.checked,
+                greeting: greeting.value.trim() || undefined,
+                voice: voice.value,
+                language: language.value.trim() || "en-GB",
+                speechTimeoutSec: t ? Number(t) : null,
+              });
+              toast("Phone settings saved");
+              void reload();
+            } catch (err) {
+              toast(errText(err), "error");
+            }
+          },
+        },
+        [
+          field("Your phone number *", number, "E.164 format, e.g. +441234567890."),
+          field(
+            "Greeting",
+            greeting,
+            "What the assistant says when it answers. Leave blank for a default.",
+          ),
+          field("Voice", voice, "The text-to-speech voice callers hear."),
+          field("Language", language, "BCP-47 tag Twilio uses for speech, e.g. en-GB."),
+          field(
+            "Pause before replying (seconds)",
+            speechTimeout,
+            "Blank = adaptive ‘auto’. Try 1–2 if it cuts callers off.",
+          ),
+          h("label", { class: "field inline" }, [enabled, h("span", {}, ["Receptionist enabled"])]),
+          h("button", { class: "primary", type: "submit" }, ["Save phone settings"]),
+        ],
+      );
+
+      return h("div", {}, [
+        h("h2", {}, ["Phone receptionist"]),
+        h("p", { class: "muted" }, [
+          s.configured
+            ? `Answering calls to ${s.number}.`
+            : "Not set up yet. Follow the steps below to have the AI answer your phone.",
+        ]),
+        h("h3", {}, ["Step-by-step setup"]),
+        tutorial(origin),
+        h("h3", {}, ["Settings"]),
+        form,
+      ]);
+    });
+  void reload();
+  return container;
+}
+
 export const STEPS = [
   { id: "dashboard", label: "Dashboard", render: dashboardStep },
   { id: "profile", label: "Profile", render: profileStep },
@@ -882,4 +1066,5 @@ export const STEPS = [
   { id: "chat", label: "Test chat", render: testChatStep },
   { id: "bookings", label: "Bookings", render: bookingsStep },
   { id: "quotes", label: "Quotes", render: quotesStep },
+  { id: "phone", label: "Phone", render: phoneStep },
 ] as const;

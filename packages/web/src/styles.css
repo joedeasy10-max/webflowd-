@@ -266,3 +266,32 @@ code {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* Phone setup tutorial */
+.tutorial {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.tutorial-body {
+  margin-top: 0.25rem;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+.url-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+.copy-url {
+  overflow-x: auto;
+  max-width: 100%;
+  word-break: break-all;
+}
+select.input {
+  appearance: auto;
+}
