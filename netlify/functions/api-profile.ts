@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
-import { businessProfileSchema, getProfile, upsertProfile } from "@webflowd/core";
+import { businessProfileSchema } from "@webflowd/shared";
+import { getProfile, runInTenant, upsertProfile } from "@webflowd/core";
 import { json, methodRouter, readJson, withErrorHandling } from "./_lib/http.js";
 import { authenticate } from "./_lib/context.js";
 
@@ -9,12 +10,12 @@ export default async (req: Request): Promise<Response> =>
     methodRouter(req, {
       GET: async () => {
         const { ctx } = await authenticate(req);
-        return json({ profile: await getProfile(ctx) });
+        return json({ profile: await runInTenant(ctx, (tx) => getProfile(ctx, tx)) });
       },
       PUT: async () => {
         const { ctx } = await authenticate(req);
         const input = await readJson(req, businessProfileSchema);
-        return json({ profile: await upsertProfile(ctx, input) });
+        return json({ profile: await runInTenant(ctx, (tx) => upsertProfile(ctx, input, tx)) });
       },
     }),
   );

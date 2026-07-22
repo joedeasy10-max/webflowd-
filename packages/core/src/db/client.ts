@@ -1,24 +1,34 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
 import { sql } from "drizzle-orm";
+import ws from "ws";
 import * as schema from "./schema.js";
 
-export type Database = NeonHttpDatabase<typeof schema>;
+// The neon-serverless (WebSocket Pool) driver is used rather than neon-http
+// because we need real interactive transactions — for tenant provisioning, the
+// atomic hours replace, and setting the `app.tenant_id` GUC that RLS relies on.
+// In Node 22 a global WebSocket exists; fall back to `ws` where it doesn't.
+if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
+  neonConfig.webSocketConstructor = ws as unknown as typeof WebSocket;
+}
 
+export type Database = NeonDatabase<typeof schema>;
+
+let pool: Pool | null = null;
 let db: Database | null = null;
 
-/** Process-wide Drizzle client over Neon's serverless HTTP driver. */
+/** Process-wide Drizzle client (reused across warm invocations). */
 export function getDb(connectionString = process.env.DATABASE_URL): Database {
   if (db) return db;
   if (!connectionString) throw new Error("DATABASE_URL is not set");
-  const sqlClient = neon(connectionString);
-  db = drizzle(sqlClient, { schema });
+  pool = new Pool({ connectionString });
+  db = drizzle(pool, { schema });
   return db;
 }
 
 /** For tests/tooling that need a fresh, isolated client. */
 export function createDb(connectionString: string): Database {
-  return drizzle(neon(connectionString), { schema });
+  return drizzle(new Pool({ connectionString }), { schema });
 }
 
 /**
@@ -26,7 +36,7 @@ export function createDb(connectionString: string): Database {
  * set, so Postgres row-level-security policies enforce tenant isolation as
  * defence-in-depth beneath the application-level tenancy guard.
  *
- * `set_config(..., true)` scopes the setting to the transaction only.
+ * `set_config(..., true)` scopes the setting to this transaction only.
  */
 export async function withTenantContext<T>(
   tenantId: string,

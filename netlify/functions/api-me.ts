@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import { getBookingRules, getHours, getProfile, listServices } from "@webflowd/core";
+import { getBookingRules, getHours, getProfile, listServices, runInTenant } from "@webflowd/core";
 import { json, methodRouter, withErrorHandling } from "./_lib/http.js";
 import { authenticate } from "./_lib/context.js";
 
@@ -9,12 +9,13 @@ export default async (req: Request): Promise<Response> =>
     methodRouter(req, {
       GET: async () => {
         const { identity, ctx } = await authenticate(req);
-        const [profile, services, hours, rules] = await Promise.all([
-          getProfile(ctx),
-          listServices(ctx),
-          getHours(ctx),
-          getBookingRules(ctx),
-        ]);
+        // Sequential within one tenant transaction (single pooled connection).
+        const { profile, services, hours, rules } = await runInTenant(ctx, async (tx) => ({
+          profile: await getProfile(ctx, tx),
+          services: await listServices(ctx, tx),
+          hours: await getHours(ctx, tx),
+          rules: await getBookingRules(ctx, tx),
+        }));
         return json({
           user: { id: ctx.userId, email: identity.email, role: ctx.role },
           tenantId: ctx.tenantId,

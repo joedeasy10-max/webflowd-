@@ -1,4 +1,4 @@
-import { ZodError, type ZodType } from "zod";
+import { ZodError, type z, type ZodTypeAny } from "zod";
 
 /** JSON response helper with sane security headers. */
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -27,8 +27,15 @@ export class HttpError extends Error {
   }
 }
 
-/** Parse and validate a JSON request body against a Zod schema. */
-export async function readJson<T>(req: Request, schema: ZodType<T>): Promise<T> {
+/**
+ * Parse and validate a JSON request body against a Zod schema. Returns the
+ * schema's OUTPUT type (defaults applied), so downstream repos receive fully
+ * populated values.
+ */
+export async function readJson<S extends ZodTypeAny>(
+  req: Request,
+  schema: S,
+): Promise<z.output<S>> {
   let raw: unknown;
   try {
     raw = await req.json();

@@ -25,7 +25,7 @@ describe("Cryptor", () => {
     const enc = c.encrypt("hello");
     const parts = enc.split(".");
     const ct = Buffer.from(parts[3]!, "base64url");
-    ct[0] ^= 0xff;
+    ct[0] = (ct[0] ?? 0) ^ 0xff;
     parts[3] = ct.toString("base64url");
     expect(() => c.decrypt(parts.join("."))).toThrow(CryptoError);
   });
