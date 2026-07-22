@@ -586,6 +586,67 @@ export function testChatStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Bookings
+// ---------------------------------------------------------------------------
+interface Booking {
+  id: string;
+  status: string;
+  startAt: string;
+  endAt: string;
+  tz: string;
+}
+
+export function bookingsStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+  const reload = () =>
+    renderInto(container, async () => {
+      const { bookings } = await api.get<{ bookings: Booking[] }>("/api/bookings");
+      const rows = bookings.map((b) => {
+        const when = new Date(b.startAt).toLocaleString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/London",
+        });
+        const canCancel = ["proposed", "confirmed", "rescheduled"].includes(b.status);
+        return h("li", { class: "row" }, [
+          h("span", {}, [`${when} — `, h("strong", {}, [b.status])]),
+          ...(canCancel
+            ? [
+                h(
+                  "button",
+                  {
+                    class: "link danger",
+                    onclick: async () => {
+                      try {
+                        await api.put(`/api/bookings/${b.id}`, { action: "cancel" });
+                        toast("Booking cancelled");
+                        void reload();
+                      } catch (err) {
+                        toast(errText(err), "error");
+                      }
+                    },
+                  },
+                  ["Cancel"],
+                ),
+              ]
+            : []),
+        ]);
+      });
+      return h("div", {}, [
+        h("h2", {}, ["Bookings"]),
+        rows.length
+          ? h("ul", { class: "list" }, rows)
+          : h("p", { class: "muted" }, ["No bookings yet."]),
+      ]);
+    });
+  void reload();
+  return container;
+}
+
 export const STEPS = [
   { id: "profile", label: "Profile", render: profileStep },
   { id: "services", label: "Services", render: servicesStep },
@@ -594,4 +655,5 @@ export const STEPS = [
   { id: "knowledge", label: "Knowledge", render: knowledgeStep },
   { id: "connections", label: "Connections", render: connectionsStep },
   { id: "chat", label: "Test chat", render: testChatStep },
+  { id: "bookings", label: "Bookings", render: bookingsStep },
 ] as const;

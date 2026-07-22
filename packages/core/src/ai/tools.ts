@@ -40,6 +40,35 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "create_booking",
+    description:
+      "Book an appointment once the customer has confirmed a specific date and time and given " +
+      "their name plus an email or phone. Only call this after check_availability shows the time " +
+      "is free. If the service requires a deposit, this returns a payment link and holds the slot " +
+      "as reserved until it's paid.",
+    input_schema: {
+      type: "object",
+      properties: {
+        service_name: { type: "string", description: "The service being booked." },
+        start_at: {
+          type: "string",
+          description: "Appointment start as an ISO-8601 datetime (with timezone).",
+        },
+        customer_name: { type: "string", description: "Customer's name." },
+        customer_email: {
+          type: "string",
+          description: "Customer's email (email or phone required).",
+        },
+        customer_phone: {
+          type: "string",
+          description: "Customer's phone (email or phone required).",
+        },
+      },
+      required: ["start_at", "customer_name"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "flag_for_human",
     description:
       "Escalate to a human when you can't answer from the provided information, the request " +

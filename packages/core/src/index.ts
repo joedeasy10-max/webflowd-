@@ -5,4 +5,7 @@ export * from "./audit/index.js";
 export * from "./security/index.js";
 export * from "./repos/index.js";
 export * from "./channels/index.js";
+export * from "./availability/index.js";
+export * from "./booking/index.js";
+export * from "./booking/ports.js";
 export * from "./ai/index.js";

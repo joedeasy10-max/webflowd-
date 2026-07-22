@@ -10,3 +10,5 @@ export * from "./contacts.js";
 export * from "./conversations.js";
 export * from "./escalations.js";
 export * from "./ai-actions.js";
+export * from "./bookings.js";
+export * from "./webhooks.js";

@@ -6,6 +6,7 @@ import type { BusyInterval, FreeBusyQuery } from "./types.js";
 export * from "./types.js";
 export * from "./google.js";
 export * from "./microsoft.js";
+export * from "./write.js";
 
 /** Read free/busy from whichever calendar provider a connection uses. */
 export async function readFreeBusy(

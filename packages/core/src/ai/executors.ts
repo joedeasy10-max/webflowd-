@@ -9,6 +9,8 @@ import { openEscalation } from "../repos/escalations.js";
 import { setConversationStatus } from "../repos/conversations.js";
 import { getValidAccessToken, ConnectionReauthError } from "../channels/oauth/token-manager.js";
 import { readFreeBusy } from "../channels/calendar/index.js";
+import { createBooking, BookingConflictError } from "../booking/index.js";
+import { buildBookingDeps } from "../booking/ports.js";
 
 export interface ExecutorDeps {
   db: Database;
@@ -158,6 +160,92 @@ async function flagForHuman(
   };
 }
 
+async function createBookingTool(
+  ctx: TenantContext,
+  input: Record<string, unknown>,
+  deps: ExecutorDeps,
+): Promise<ToolOutcome> {
+  const startAtStr = typeof input.start_at === "string" ? input.start_at : null;
+  const name = typeof input.customer_name === "string" ? input.customer_name : null;
+  if (!startAtStr || !name) {
+    return { content: "Need a start time and the customer's name to book.", isError: true };
+  }
+  const startAt = new Date(startAtStr);
+  if (Number.isNaN(startAt.getTime())) {
+    return { content: "start_at must be a valid ISO-8601 datetime.", isError: true };
+  }
+  const email = typeof input.customer_email === "string" ? input.customer_email : undefined;
+  const phone = typeof input.customer_phone === "string" ? input.customer_phone : undefined;
+  if (!email && !phone) {
+    return {
+      content: "Ask the customer for an email or phone number before booking.",
+      isError: true,
+    };
+  }
+
+  // Resolve the service (by name, or the only active one).
+  const active = (await listServices(ctx, deps.db)).filter((s) => s.active);
+  const filter = typeof input.service_name === "string" ? input.service_name.toLowerCase() : null;
+  const svc = filter
+    ? active.find((s) => s.name.toLowerCase().includes(filter))
+    : active.length === 1
+      ? active[0]
+      : undefined;
+  if (!svc) {
+    return {
+      content:
+        active.length === 0
+          ? "No services are configured, so booking isn't possible — flag for a human."
+          : "Which service is this for? Ask the customer to pick one before booking.",
+      isError: true,
+    };
+  }
+
+  const end = new Date(startAt.getTime() + svc.defaultDurationMin * 60_000);
+  const bookingDeps = await buildBookingDeps(ctx, {
+    db: deps.db,
+    ...(deps.env ? { env: deps.env } : {}),
+    ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+    busyRange: {
+      from: new Date(startAt.getTime() - 12 * 3600_000),
+      to: new Date(end.getTime() + 12 * 3600_000),
+    },
+  });
+
+  try {
+    const idempotencyKey = `${deps.conversationId}:${svc.id}:${startAt.toISOString()}`;
+    const res = await createBooking(
+      ctx,
+      {
+        serviceId: svc.id,
+        startAt,
+        contact: { name, ...(email ? { email } : {}), ...(phone ? { phone } : {}) },
+        conversationId: deps.conversationId,
+        idempotencyKey,
+      },
+      bookingDeps,
+    );
+    const whenLocal = DateTime.fromJSDate(startAt)
+      .setZone(DEFAULT_TIMEZONE)
+      .toFormat("cccc d LLLL, HH:mm");
+    if (res.paymentUrl) {
+      return {
+        content:
+          `The ${svc.name} slot on ${whenLocal} is reserved pending a deposit. Give the customer this ` +
+          `secure payment link and tell them the slot is held until it's paid: ${res.paymentUrl}`,
+      };
+    }
+    return {
+      content: `Booked and confirmed: ${svc.name} on ${whenLocal}. A confirmation has been sent. Let the customer know.`,
+    };
+  } catch (err) {
+    if (err instanceof BookingConflictError) {
+      return { content: "That time was just taken. Offer the customer another available time." };
+    }
+    throw err;
+  }
+}
+
 /** Dispatch a model tool call to its server-side executor. */
 export async function executeTool(
   ctx: TenantContext,
@@ -170,6 +258,8 @@ export async function executeTool(
       return getServiceInfo(ctx, input, deps);
     case "check_availability":
       return checkAvailability(ctx, input, deps);
+    case "create_booking":
+      return createBookingTool(ctx, input, deps);
     case "flag_for_human":
       return flagForHuman(ctx, input, deps);
     default:
