@@ -7,8 +7,15 @@ import * as schema from "./schema.js";
 // The neon-serverless (WebSocket Pool) driver is used rather than neon-http
 // because we need real interactive transactions — for tenant provisioning, the
 // atomic hours replace, and setting the `app.tenant_id` GUC that RLS relies on.
-// In Node 22 a global WebSocket exists; fall back to `ws` where it doesn't.
-if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
+//
+// In a Node runtime (Netlify Functions) always use the `ws` implementation:
+// Neon's driver expects it, and relying on Node's global WebSocket has proven
+// unreliable with the Pool. In edge/browser-like runtimes a native WebSocket
+// exists and is used instead.
+const isNodeRuntime =
+  typeof process !== "undefined" &&
+  Boolean((process as { versions?: { node?: string } }).versions?.node);
+if (isNodeRuntime) {
   neonConfig.webSocketConstructor = ws as unknown as typeof WebSocket;
 }
 
