@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb, type Database } from "../db/client.js";
-import { bookingRules, businessHours, tenants, users } from "../db/schema.js";
+import { bookingRules, businessHours, channels, tenants, users } from "../db/schema.js";
 import { writeAudit } from "../audit/index.js";
+import { generateChatPublicKey } from "./channels.js";
 import type { TenantContext } from "../tenancy/index.js";
 
 export interface Auth0Identity {
@@ -89,6 +90,10 @@ export async function provisionTenant(
 
     await tx.insert(bookingRules).values({ tenantId });
     await tx.insert(businessHours).values(defaultWeeklyHours(tenantId));
+    // Seed a chat-widget channel so the owner has an embeddable public key.
+    await tx
+      .insert(channels)
+      .values({ tenantId, type: "chat", publicKey: generateChatPublicKey(), enabled: true });
 
     await writeAudit(
       {

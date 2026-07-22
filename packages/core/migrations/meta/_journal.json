@@ -15,6 +15,13 @@
       "when": 1784742351474,
       "tag": "0001_rls_and_audit_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784748688270,
+      "tag": "0002_channels_not_tenant_rls",
+      "breakpoints": true
     }
   ]
 }

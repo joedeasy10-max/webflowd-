@@ -5,3 +5,8 @@ export * from "./hours.js";
 export * from "./booking-rules.js";
 export * from "./knowledge.js";
 export * from "./connections.js";
+export * from "./channels.js";
+export * from "./contacts.js";
+export * from "./conversations.js";
+export * from "./escalations.js";
+export * from "./ai-actions.js";

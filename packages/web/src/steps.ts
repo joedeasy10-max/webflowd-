@@ -1,5 +1,6 @@
 import { api, ApiError } from "./api.js";
 import { field, h, toast } from "./dom.js";
+import { env } from "./env.js";
 
 const WEEKDAY_NAMES = [
   "Sunday",
@@ -503,6 +504,88 @@ export function connectionsStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Test chat (talks to the public /api/chat widget endpoint)
+// ---------------------------------------------------------------------------
+interface ChatReply {
+  reply: string;
+  conversationId: string;
+  escalated: boolean;
+}
+
+export function testChatStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+  void renderInto(container, async () => {
+    const { widgetPublicKey } = await api.get<{ widgetPublicKey: string }>("/api/me");
+    let conversationId: string | undefined;
+
+    const log = h("div", { class: "chat-log" });
+    const input = h("input", {
+      class: "input",
+      placeholder: "Ask your assistant something…",
+    }) as HTMLInputElement;
+
+    const addBubble = (who: "you" | "ai", text: string) =>
+      log.append(h("div", { class: `bubble ${who}` }, [text]));
+
+    const send = async () => {
+      const message = input.value.trim();
+      if (!message) return;
+      input.value = "";
+      addBubble("you", message);
+      log.scrollTop = log.scrollHeight;
+      const thinking = h("div", { class: "bubble ai muted" }, ["…"]);
+      log.append(thinking);
+      try {
+        const res = await fetch(`${env.apiBase}/api/chat`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ publicKey: widgetPublicKey, message, conversationId }),
+        });
+        const data = (await res.json()) as ChatReply & { error?: string };
+        thinking.remove();
+        if (!res.ok) {
+          addBubble("ai", data.error ?? "Something went wrong.");
+          return;
+        }
+        conversationId = data.conversationId;
+        addBubble("ai", data.reply + (data.escalated ? "  (flagged for the team)" : ""));
+      } catch (err) {
+        thinking.remove();
+        addBubble("ai", errText(err));
+      }
+      log.scrollTop = log.scrollHeight;
+    };
+
+    const form = h(
+      "form",
+      {
+        onsubmit: (e: Event) => {
+          e.preventDefault();
+          void send();
+        },
+      },
+      [
+        h("div", { class: "chat-row" }, [
+          input,
+          h("button", { class: "primary", type: "submit" }, ["Send"]),
+        ]),
+      ],
+    );
+
+    return h("div", {}, [
+      h("h2", {}, ["Test your assistant"]),
+      h("p", { class: "muted" }, [
+        "This is the same endpoint your website chat widget uses. Widget key: ",
+        h("code", {}, [widgetPublicKey]),
+      ]),
+      log,
+      form,
+    ]);
+  });
+  return container;
+}
+
 export const STEPS = [
   { id: "profile", label: "Profile", render: profileStep },
   { id: "services", label: "Services", render: servicesStep },
@@ -510,4 +593,5 @@ export const STEPS = [
   { id: "rules", label: "Booking rules", render: bookingRulesStep },
   { id: "knowledge", label: "Knowledge", render: knowledgeStep },
   { id: "connections", label: "Connections", render: connectionsStep },
+  { id: "chat", label: "Test chat", render: testChatStep },
 ] as const;
