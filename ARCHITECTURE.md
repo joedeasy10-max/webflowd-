@@ -400,6 +400,11 @@ sequenceDiagram
 **Phase 5 — Lifecycle, resilience & dashboard.** Reschedule/cancel/no-show, appointment reminders + review requests + lead follow-up (Inngest cron), missed-call text-back and web-form/Google-Business ingestion, retries/error handling/`needs_reauth` recovery, and the owner dashboard (AI activity, flagged threads, upcoming jobs, connection health). *Voice receptionist is scoped as a follow-on to this phase.*
 *DoD:* reschedule/cancel update calendar + notify; reminders/review-requests/follow-ups fire on schedule and honour opt-out; failed jobs retry safely and surface in the dashboard; owner has a working activity + escalation dashboard.
 
+**Post-Phase-5 follow-ons (implemented).** Built on top of Phase 5:
+- **Lead follow-up + quotes** — `lead_followups` nurture sequence (Inngest hourly cron) that self-cancels once a lead books; `quotes` (owner-managed, RLS-enforced) with create/send/accept-decline via `/api/quotes` and a web Quotes tab.
+- **Voice receptionist (voicemail first step)** — `webhook-twilio-recording` stores the voicemail transcription + recording link as a message and texts the caller back (honouring opt-out). Full real-time Media-Streams STT/TTS voice remains the larger follow-on.
+- **Google Business Profile ingestion** — `webhook-google-business` (shared-secret auth) feeds GBP messages through the shared `ingestInboundMessage` pipeline on the `google_business` channel; automated send-back awaits GBP send-API/OAuth.
+
 ---
 
 ## 10. Secrets (documented in `.env.example`, created in Phase 1)
