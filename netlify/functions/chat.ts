@@ -7,13 +7,8 @@ import {
   classifySpam,
   createConversation,
   findOrCreateContact,
-  getBookingRules,
   getConversation,
-  getHours,
-  getProfile,
   getRecentMessages,
-  listKnowledge,
-  listServices,
   resolveChatChannel,
   runAssistantTurn,
   runInTenant,
@@ -21,10 +16,10 @@ import {
   writeAudit,
   type EngineHistoryItem,
   type TenantContext,
-  type TenantPromptData,
 } from "@webflowd/core";
 import { json, methodRouter, readJson, withErrorHandling } from "./_lib/http.js";
 import { clientIp } from "./_lib/context.js";
+import { loadTenantData } from "./_lib/tenant-data.js";
 
 const bodySchema = z.object({
   publicKey: z.string().min(8).max(128),
@@ -183,51 +178,5 @@ export default async (req: Request): Promise<Response> => {
     }),
   );
 };
-
-async function loadTenantData(
-  ctx: TenantContext,
-  tx: Parameters<typeof getProfile>[1],
-): Promise<TenantPromptData> {
-  const [profile, services, hours, bookingRules, knowledge] = [
-    await getProfile(ctx, tx),
-    await listServices(ctx, tx),
-    await getHours(ctx, tx),
-    await getBookingRules(ctx, tx),
-    await listKnowledge(ctx, tx),
-  ];
-  return {
-    profile: profile
-      ? {
-          displayName: profile.displayName,
-          trade: profile.trade,
-          phone: profile.phone,
-          address: profile.address,
-          about: profile.about,
-          tone: profile.tone,
-          pricingNotes: profile.pricingNotes,
-          bookingPolicyText: profile.bookingPolicyText,
-        }
-      : null,
-    services: services.map((s) => ({
-      name: s.name,
-      description: s.description,
-      defaultDurationMin: s.defaultDurationMin,
-      priceNote: s.priceNote,
-      depositRequired: s.depositRequired,
-    })),
-    hours: hours.map((h) => ({
-      weekday: h.weekday,
-      closed: h.closed,
-      open: h.open,
-      close: h.close,
-    })),
-    bookingRules: bookingRules
-      ? { minNoticeMin: bookingRules.minNoticeMin, maxAdvanceDays: bookingRules.maxAdvanceDays }
-      : null,
-    knowledge: knowledge
-      .filter((k) => k.active)
-      .map((k) => ({ question: k.question, answer: k.answer })),
-  };
-}
 
 export const config: Config = { path: "/api/chat" };

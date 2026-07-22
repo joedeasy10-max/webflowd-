@@ -9,4 +9,7 @@ export * from "./availability/index.js";
 export * from "./booking/index.js";
 export * from "./booking/ports.js";
 export * from "./lifecycle/index.js";
+export * from "./lifecycle/sender.js";
+export * from "./lifecycle/missed-call.js";
+export * from "./dashboard/index.js";
 export * from "./ai/index.js";

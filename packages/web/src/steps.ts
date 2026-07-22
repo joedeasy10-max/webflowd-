@@ -612,28 +612,28 @@ export function bookingsStep(): HTMLElement {
           timeZone: "Europe/London",
         });
         const canCancel = ["proposed", "confirmed", "rescheduled"].includes(b.status);
+        const canNoShow = ["confirmed", "rescheduled"].includes(b.status);
+        const action = (label: string, body: unknown, done: string) =>
+          h(
+            "button",
+            {
+              class: "link danger",
+              onclick: async () => {
+                try {
+                  await api.put(`/api/bookings/${b.id}`, body);
+                  toast(done);
+                  void reload();
+                } catch (err) {
+                  toast(errText(err), "error");
+                }
+              },
+            },
+            [label],
+          );
         return h("li", { class: "row" }, [
           h("span", {}, [`${when} — `, h("strong", {}, [b.status])]),
-          ...(canCancel
-            ? [
-                h(
-                  "button",
-                  {
-                    class: "link danger",
-                    onclick: async () => {
-                      try {
-                        await api.put(`/api/bookings/${b.id}`, { action: "cancel" });
-                        toast("Booking cancelled");
-                        void reload();
-                      } catch (err) {
-                        toast(errText(err), "error");
-                      }
-                    },
-                  },
-                  ["Cancel"],
-                ),
-              ]
-            : []),
+          ...(canNoShow ? [action("No-show", { action: "no_show" }, "Marked as no-show")] : []),
+          ...(canCancel ? [action("Cancel", { action: "cancel" }, "Booking cancelled")] : []),
         ]);
       });
       return h("div", {}, [
@@ -647,7 +647,136 @@ export function bookingsStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+interface DashboardData {
+  upcomingBookings: Array<{
+    id: string;
+    startAt: string;
+    status: string;
+    serviceName: string | null;
+    contactName: string | null;
+  }>;
+  openEscalations: Array<{ id: string; reason: string; summary: string | null }>;
+  connections: Array<{
+    provider: string;
+    status: string;
+    lastSyncedAt: string | null;
+    needsReauth: boolean;
+  }>;
+  recentActivity: Array<{ toolName: string; outcome: string | null; createdAt: string }>;
+  counts: { upcoming: number; openEscalations: number; connectionsNeedingReauth: number };
+}
+
+function whenLabel(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/London",
+  });
+}
+
+export function dashboardStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+  void renderInto(container, async () => {
+    const d = await api.get<DashboardData>("/api/dashboard");
+
+    const stat = (label: string, value: number, warn = false) =>
+      h("div", { class: warn && value > 0 ? "stat warn" : "stat" }, [
+        h("span", { class: "stat-value" }, [String(value)]),
+        h("span", { class: "stat-label" }, [label]),
+      ]);
+
+    const upcoming = d.upcomingBookings.length
+      ? h(
+          "ul",
+          { class: "list" },
+          d.upcomingBookings.map((b) =>
+            h("li", { class: "row" }, [
+              h("span", {}, [
+                `${whenLabel(b.startAt)} — `,
+                h("strong", {}, [b.serviceName ?? "Appointment"]),
+                ...(b.contactName ? [` · ${b.contactName}`] : []),
+                ` (${b.status})`,
+              ]),
+            ]),
+          ),
+        )
+      : h("p", { class: "muted" }, ["No upcoming jobs."]);
+
+    const escalations = d.openEscalations.length
+      ? h(
+          "ul",
+          { class: "list" },
+          d.openEscalations.map((e) =>
+            h("li", { class: "row" }, [
+              h("span", {}, [
+                h("strong", {}, [e.reason]),
+                ...(e.summary ? [` — ${e.summary}`] : []),
+              ]),
+            ]),
+          ),
+        )
+      : h("p", { class: "muted" }, ["Nothing needs your attention."]);
+
+    const connections = d.connections.length
+      ? h(
+          "ul",
+          { class: "list" },
+          d.connections.map((c) =>
+            h("li", { class: "row" }, [
+              h("span", {}, [
+                h("strong", {}, [c.provider]),
+                ` — ${c.needsReauth ? "needs reconnect" : c.status}`,
+                ...(c.lastSyncedAt ? [` · synced ${whenLabel(c.lastSyncedAt)}`] : []),
+              ]),
+            ]),
+          ),
+        )
+      : h("p", { class: "muted" }, ["No connections yet."]);
+
+    const activity = d.recentActivity.length
+      ? h(
+          "ul",
+          { class: "list" },
+          d.recentActivity.map((a) =>
+            h("li", { class: "row" }, [
+              h("span", {}, [
+                h("strong", {}, [a.toolName]),
+                ...(a.outcome ? [` — ${a.outcome}`] : []),
+                ` · ${whenLabel(a.createdAt)}`,
+              ]),
+            ]),
+          ),
+        )
+      : h("p", { class: "muted" }, ["No AI activity yet."]);
+
+    return h("div", {}, [
+      h("h2", {}, ["Dashboard"]),
+      h("div", { class: "stats" }, [
+        stat("Upcoming jobs", d.counts.upcoming),
+        stat("Open escalations", d.counts.openEscalations, true),
+        stat("Reconnect needed", d.counts.connectionsNeedingReauth, true),
+      ]),
+      h("h3", {}, ["Upcoming jobs"]),
+      upcoming,
+      h("h3", {}, ["Needs a human"]),
+      escalations,
+      h("h3", {}, ["Connection health"]),
+      connections,
+      h("h3", {}, ["Recent AI activity"]),
+      activity,
+    ]);
+  });
+  return container;
+}
+
 export const STEPS = [
+  { id: "dashboard", label: "Dashboard", render: dashboardStep },
   { id: "profile", label: "Profile", render: profileStep },
   { id: "services", label: "Services", render: servicesStep },
   { id: "hours", label: "Hours", render: hoursStep },

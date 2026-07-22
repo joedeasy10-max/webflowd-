@@ -386,6 +386,35 @@ export async function cancelBooking(
   );
 }
 
+/**
+ * Mark a booking as a no-show. Keeps the calendar event and history intact (the
+ * job was scheduled; the customer didn't attend). Pending reminders/review
+ * requests are skipped automatically by the lifecycle processors once the status
+ * is `no_show`.
+ */
+export async function markNoShow(
+  ctx: TenantContext,
+  bookingId: string,
+  deps: BookingDeps = {},
+): Promise<void> {
+  const db = deps.db ?? getDb();
+  const booking = await getBookingById(ctx, bookingId, db);
+  if (!booking) throw new BookingError("Booking not found", 404);
+  if (["cancelled", "no_show"].includes(booking.status)) return; // idempotent
+
+  await updateBooking(ctx, bookingId, { status: "no_show" }, db);
+  await writeAudit(
+    {
+      tenantId: ctx.tenantId,
+      actor: ctx.userId,
+      action: "booking.no_show",
+      entityType: "booking",
+      entityId: bookingId,
+    },
+    db,
+  );
+}
+
 export async function rescheduleBooking(
   ctx: TenantContext,
   bookingId: string,

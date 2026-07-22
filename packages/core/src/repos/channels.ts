@@ -60,3 +60,27 @@ export async function resolveChatChannel(
   });
   return row ? { tenantId: row.tenantId, channelId: row.id } : null;
 }
+
+/**
+ * Resolve a tenant + channel from a channel type and its external identifier
+ * (e.g. a Twilio voice/SMS number in E.164). Like `resolveChatChannel`, this is
+ * a system-context lookup used before any tenant is known — the inbound provider
+ * identifier is the tenant resolver. (`channels` is not under tenant RLS; see
+ * migration 0002.)
+ */
+export async function resolveChannelByIdentifier(
+  type: (typeof channels.type.enumValues)[number],
+  identifier: string,
+  database: Database = getDb(),
+): Promise<ResolvedChannel | null> {
+  if (!identifier) return null;
+  const row = await database.query.channels.findFirst({
+    where: and(
+      eq(channels.type, type),
+      eq(channels.identifier, identifier),
+      eq(channels.enabled, true),
+    ),
+    columns: { id: true, tenantId: true },
+  });
+  return row ? { tenantId: row.tenantId, channelId: row.id } : null;
+}
