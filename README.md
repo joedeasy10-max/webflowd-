@@ -7,6 +7,7 @@ books jobs across channels — without the owner touching it.
 
 - **Plan & design:** [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - **Stable context for contributors / AI sessions:** [`CLAUDE.md`](./CLAUDE.md)
+- **Auth0 setup (API + SPA + email-claim Action):** [`docs/auth0-setup.md`](./docs/auth0-setup.md)
 
 ## Status
 
