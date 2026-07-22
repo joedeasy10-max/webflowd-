@@ -1,0 +1,37 @@
+{
+  "name": "@webflowd/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./db": "./src/db/index.ts",
+    "./crypto": "./src/crypto/index.ts",
+    "./tenancy": "./src/tenancy/index.ts",
+    "./audit": "./src/audit/index.ts",
+    "./security": "./src/security/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "@webflowd/shared": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "jose": "^5.9.6",
+    "luxon": "^3.5.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "drizzle-kit": "^0.30.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

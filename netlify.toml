@@ -1,0 +1,48 @@
+# Netlify configuration for the Webflow'd AI Admin Assistant.
+# The existing marketing site continues to be served as static HTML;
+# the signed-in app is built from packages/web and served under /app.
+
+[build]
+  command = "pnpm install && pnpm --filter @webflowd/web build"
+  publish = "packages/web/dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+  # Bundle workspace packages into each function.
+  external_node_modules = []
+
+# Background functions (up to 15 min) for anything slow. The Inngest handler
+# and any *-background function fan out from webhooks; nothing slow runs inline.
+[functions."inngest"]
+  # Inngest calls this endpoint; keep it a normal function.
+
+# Friendly API routing → Netlify Functions.
+[[redirects]]
+  from = "/api/oauth/:provider/start"
+  to = "/.netlify/functions/api-oauth-start"
+  status = 200
+
+[[redirects]]
+  from = "/api/oauth/:provider/callback"
+  to = "/.netlify/functions/api-oauth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/webhooks/*"
+  to = "/.netlify/functions/webhook-:splat"
+  status = 200
+
+# SPA-ish fallback for the signed-in app.
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
