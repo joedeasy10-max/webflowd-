@@ -22,6 +22,7 @@ import {
   type Interval,
 } from "../availability/index.js";
 import type { CalendarEventInput } from "../channels/calendar/write.js";
+import { scheduleBookingLifecycle } from "../lifecycle/index.js";
 
 export class BookingError extends TenantError {}
 export class BookingConflictError extends TenantError {
@@ -308,6 +309,8 @@ async function finalizeConfirmed(
       })
       .catch(() => undefined); // notifications are best-effort
   }
+  // Schedule reminders + a review request for this confirmed booking.
+  await scheduleBookingLifecycle(ctx, { bookingId, startAt, contact }, db);
 }
 
 /** Confirm a booking after its deposit is paid (called from the Stripe webhook). */
