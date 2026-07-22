@@ -80,11 +80,8 @@ export async function verifyAccessToken(
   // Custom claim namespace for email/name (configure an Auth0 Action to add it).
   const ns = "https://webflowd.com/";
   const email =
-    (payload[`${ns}email`] as string | undefined) ??
-    (payload.email as string | undefined) ??
-    "";
-  const name =
-    (payload[`${ns}name`] as string | undefined) ?? (payload.name as string | undefined);
+    (payload[`${ns}email`] as string | undefined) ?? (payload.email as string | undefined) ?? "";
+  const name = (payload[`${ns}name`] as string | undefined) ?? (payload.name as string | undefined);
 
   return { sub, email, name, scope: payload.scope as string | undefined, raw: payload };
 }

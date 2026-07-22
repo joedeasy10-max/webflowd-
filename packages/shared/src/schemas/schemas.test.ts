@@ -10,9 +10,7 @@ describe("businessProfileSchema", () => {
     expect(businessProfileSchema.parse({ displayName: "Joe's Plumbing" }).displayName).toBe(
       "Joe's Plumbing",
     );
-    expect(() =>
-      businessProfileSchema.parse({ displayName: "X", nope: 1 } as unknown),
-    ).toThrow();
+    expect(() => businessProfileSchema.parse({ displayName: "X", nope: 1 } as unknown)).toThrow();
   });
 
   it("lowercases and validates reply email", () => {
@@ -24,7 +22,11 @@ describe("businessProfileSchema", () => {
 describe("serviceSchema", () => {
   it("requires a deposit amount when depositRequired", () => {
     expect(() =>
-      serviceSchema.parse({ name: "Boiler service", defaultDurationMin: 60, depositRequired: true }),
+      serviceSchema.parse({
+        name: "Boiler service",
+        defaultDurationMin: 60,
+        depositRequired: true,
+      }),
     ).toThrow();
     expect(
       serviceSchema.parse({

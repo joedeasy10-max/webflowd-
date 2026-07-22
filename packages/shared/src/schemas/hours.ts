@@ -14,7 +14,7 @@ export const businessHourSchema = z
     message: "open and close are required unless closed is true",
     path: ["open"],
   })
-  .refine((h) => h.closed || (h.open! < h.close!), {
+  .refine((h) => h.closed || h.open! < h.close!, {
     message: "open must be before close",
     path: ["close"],
   });
@@ -41,7 +41,7 @@ export const hoursExceptionSchema = z
     message: "open and close are required unless closed is true",
     path: ["open"],
   })
-  .refine((h) => h.closed || (h.open! < h.close!), {
+  .refine((h) => h.closed || h.open! < h.close!, {
     message: "open must be before close",
     path: ["close"],
   });

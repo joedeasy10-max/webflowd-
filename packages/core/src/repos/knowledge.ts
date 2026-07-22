@@ -28,7 +28,13 @@ export async function createKnowledge(
     })
     .returning();
   await writeAudit(
-    { tenantId: ctx.tenantId, actor: ctx.userId, action: "knowledge.created", entityType: "knowledge_item", entityId: row!.id },
+    {
+      tenantId: ctx.tenantId,
+      actor: ctx.userId,
+      action: "knowledge.created",
+      entityType: "knowledge_item",
+      entityId: row!.id,
+    },
     database,
   );
   return row!;
@@ -47,7 +53,13 @@ export async function updateKnowledge(
     .returning();
   if (rows.length === 0) throw new TenantError("Knowledge item not found", 404);
   await writeAudit(
-    { tenantId: ctx.tenantId, actor: ctx.userId, action: "knowledge.updated", entityType: "knowledge_item", entityId: itemId },
+    {
+      tenantId: ctx.tenantId,
+      actor: ctx.userId,
+      action: "knowledge.updated",
+      entityType: "knowledge_item",
+      entityId: itemId,
+    },
     database,
   );
   return rows[0]!;
@@ -64,7 +76,13 @@ export async function deleteKnowledge(
     .returning({ id: knowledgeItems.id });
   if (rows.length === 0) throw new TenantError("Knowledge item not found", 404);
   await writeAudit(
-    { tenantId: ctx.tenantId, actor: ctx.userId, action: "knowledge.deleted", entityType: "knowledge_item", entityId: itemId },
+    {
+      tenantId: ctx.tenantId,
+      actor: ctx.userId,
+      action: "knowledge.deleted",
+      entityType: "knowledge_item",
+      entityId: itemId,
+    },
     database,
   );
 }

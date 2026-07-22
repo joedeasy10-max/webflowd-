@@ -1,7 +1,15 @@
 import { api, ApiError } from "./api.js";
 import { field, h, toast } from "./dom.js";
 
-const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 function errText(err: unknown): string {
   if (err instanceof ApiError) {
@@ -47,39 +55,43 @@ export function profileStep(): HTMLElement {
     const pricingNotes = textarea("pricingNotes", p.pricingNotes ?? "");
     const bookingPolicyText = textarea("bookingPolicyText", p.bookingPolicyText ?? "");
 
-    const form = h("form", {
-      onsubmit: async (e: Event) => {
-        e.preventDefault();
-        const payload = {
-          displayName: displayName.value.trim(),
-          trade: trade.value.trim() || undefined,
-          phone: phone.value.trim() || undefined,
-          replyEmail: replyEmail.value.trim() || undefined,
-          address: address.value.trim() || undefined,
-          about: about.value.trim() || undefined,
-          tone: tone.value.trim() || undefined,
-          pricingNotes: pricingNotes.value.trim() || undefined,
-          bookingPolicyText: bookingPolicyText.value.trim() || undefined,
-        };
-        try {
-          await api.put("/api/profile", payload);
-          toast("Profile saved");
-        } catch (err) {
-          toast(errText(err), "error");
-        }
+    const form = h(
+      "form",
+      {
+        onsubmit: async (e: Event) => {
+          e.preventDefault();
+          const payload = {
+            displayName: displayName.value.trim(),
+            trade: trade.value.trim() || undefined,
+            phone: phone.value.trim() || undefined,
+            replyEmail: replyEmail.value.trim() || undefined,
+            address: address.value.trim() || undefined,
+            about: about.value.trim() || undefined,
+            tone: tone.value.trim() || undefined,
+            pricingNotes: pricingNotes.value.trim() || undefined,
+            bookingPolicyText: bookingPolicyText.value.trim() || undefined,
+          };
+          try {
+            await api.put("/api/profile", payload);
+            toast("Profile saved");
+          } catch (err) {
+            toast(errText(err), "error");
+          }
+        },
       },
-    }, [
-      field("Business name *", displayName),
-      field("Trade", trade, "e.g. Plumbing, Electrical, Roofing"),
-      field("Public phone", phone),
-      field("Reply-to email", replyEmail),
-      field("Address", address),
-      field("About the business", about, "Used by the assistant to answer questions."),
-      field("Brand voice / tone", tone, "e.g. Friendly, plain-spoken, no jargon."),
-      field("Pricing notes", pricingNotes, "The assistant will never quote beyond this."),
-      field("Booking / cancellation policy", bookingPolicyText),
-      h("button", { class: "primary", type: "submit" }, ["Save profile"]),
-    ]);
+      [
+        field("Business name *", displayName),
+        field("Trade", trade, "e.g. Plumbing, Electrical, Roofing"),
+        field("Public phone", phone),
+        field("Reply-to email", replyEmail),
+        field("Address", address),
+        field("About the business", about, "Used by the assistant to answer questions."),
+        field("Brand voice / tone", tone, "e.g. Friendly, plain-spoken, no jargon."),
+        field("Pricing notes", pricingNotes, "The assistant will never quote beyond this."),
+        field("Booking / cancellation policy", bookingPolicyText),
+        h("button", { class: "primary", type: "submit" }, ["Save profile"]),
+      ],
+    );
     return h("div", {}, [h("h2", {}, ["Business profile"]), form]);
   });
   return container;
@@ -112,18 +124,22 @@ export function servicesStep(): HTMLElement {
             s.depositRequired ? " · deposit" : "",
             s.active ? "" : " · inactive",
           ]),
-          h("button", {
-            class: "link danger",
-            onclick: async () => {
-              try {
-                await api.del(`/api/services/${s.id}`);
-                toast("Service removed");
-                void reload();
-              } catch (err) {
-                toast(errText(err), "error");
-              }
+          h(
+            "button",
+            {
+              class: "link danger",
+              onclick: async () => {
+                try {
+                  await api.del(`/api/services/${s.id}`);
+                  toast("Service removed");
+                  void reload();
+                } catch (err) {
+                  toast(errText(err), "error");
+                }
+              },
             },
-          }, ["Delete"]),
+            ["Delete"],
+          ),
         ]),
       );
 
@@ -134,38 +150,44 @@ export function servicesStep(): HTMLElement {
       const priceNote = input("priceNote");
       const deposit = h("input", { type: "checkbox", name: "depositRequired" });
 
-      const form = h("form", {
-        onsubmit: async (e: Event) => {
-          e.preventDefault();
-          try {
-            await api.post("/api/services", {
-              name: name.value.trim(),
-              defaultDurationMin: Number(duration.value),
-              bufferBeforeMin: Number(bufBefore.value),
-              bufferAfterMin: Number(bufAfter.value),
-              priceNote: priceNote.value.trim() || undefined,
-              depositRequired: deposit.checked,
-              depositAmountPence: deposit.checked ? 5000 : undefined,
-            });
-            toast("Service added");
-            void reload();
-          } catch (err) {
-            toast(errText(err), "error");
-          }
+      const form = h(
+        "form",
+        {
+          onsubmit: async (e: Event) => {
+            e.preventDefault();
+            try {
+              await api.post("/api/services", {
+                name: name.value.trim(),
+                defaultDurationMin: Number(duration.value),
+                bufferBeforeMin: Number(bufBefore.value),
+                bufferAfterMin: Number(bufAfter.value),
+                priceNote: priceNote.value.trim() || undefined,
+                depositRequired: deposit.checked,
+                depositAmountPence: deposit.checked ? 5000 : undefined,
+              });
+              toast("Service added");
+              void reload();
+            } catch (err) {
+              toast(errText(err), "error");
+            }
+          },
         },
-      }, [
-        field("Service name *", name),
-        field("Default duration (min) *", duration),
-        field("Buffer before (min)", bufBefore),
-        field("Buffer after (min)", bufAfter),
-        field("Price note", priceNote),
-        h("label", { class: "field inline" }, [deposit, h("span", {}, ["Requires a deposit"])]),
-        h("button", { class: "primary", type: "submit" }, ["Add service"]),
-      ]);
+        [
+          field("Service name *", name),
+          field("Default duration (min) *", duration),
+          field("Buffer before (min)", bufBefore),
+          field("Buffer after (min)", bufAfter),
+          field("Price note", priceNote),
+          h("label", { class: "field inline" }, [deposit, h("span", {}, ["Requires a deposit"])]),
+          h("button", { class: "primary", type: "submit" }, ["Add service"]),
+        ],
+      );
 
       return h("div", {}, [
         h("h2", {}, ["Services"]),
-        rows.length ? h("ul", { class: "list" }, rows) : h("p", { class: "muted" }, ["No services yet."]),
+        rows.length
+          ? h("ul", { class: "list" }, rows)
+          : h("p", { class: "muted" }, ["No services yet."]),
         form,
       ]);
     });
@@ -203,23 +225,31 @@ export function hoursStep(): HTMLElement {
       ]);
     });
 
-    const form = h("form", {
-      onsubmit: async (e: Event) => {
-        e.preventDefault();
-        const rows = [0, 1, 2, 3, 4, 5, 6].map((wd) => {
-          const isClosed = (container.querySelector(`[name="closed-${wd}"]`) as HTMLInputElement).checked;
-          const open = (container.querySelector(`[name="open-${wd}"]`) as HTMLInputElement).value;
-          const close = (container.querySelector(`[name="close-${wd}"]`) as HTMLInputElement).value;
-          return isClosed ? { weekday: wd, closed: true } : { weekday: wd, closed: false, open, close };
-        });
-        try {
-          await api.put("/api/hours", rows);
-          toast("Hours saved");
-        } catch (err) {
-          toast(errText(err), "error");
-        }
+    const form = h(
+      "form",
+      {
+        onsubmit: async (e: Event) => {
+          e.preventDefault();
+          const rows = [0, 1, 2, 3, 4, 5, 6].map((wd) => {
+            const isClosed = (container.querySelector(`[name="closed-${wd}"]`) as HTMLInputElement)
+              .checked;
+            const open = (container.querySelector(`[name="open-${wd}"]`) as HTMLInputElement).value;
+            const close = (container.querySelector(`[name="close-${wd}"]`) as HTMLInputElement)
+              .value;
+            return isClosed
+              ? { weekday: wd, closed: true }
+              : { weekday: wd, closed: false, open, close };
+          });
+          try {
+            await api.put("/api/hours", rows);
+            toast("Hours saved");
+          } catch (err) {
+            toast(errText(err), "error");
+          }
+        },
       },
-    }, [...rowControls, h("button", { class: "primary", type: "submit" }, ["Save hours"])]);
+      [...rowControls, h("button", { class: "primary", type: "submit" }, ["Save hours"])],
+    );
 
     return h("div", {}, [h("h2", {}, ["Opening hours"]), form]);
   });
@@ -241,7 +271,9 @@ interface BookingRules {
 export function bookingRulesStep(): HTMLElement {
   const container = h("section", { class: "step" });
   void renderInto(container, async () => {
-    const { bookingRules } = await api.get<{ bookingRules: BookingRules | null }>("/api/booking-rules");
+    const { bookingRules } = await api.get<{ bookingRules: BookingRules | null }>(
+      "/api/booking-rules",
+    );
     const r = bookingRules ?? {
       minNoticeMin: 120,
       maxAdvanceDays: 60,
@@ -258,32 +290,39 @@ export function bookingRulesStep(): HTMLElement {
     const autoConfirm = h("input", { type: "checkbox", name: "autoConfirm" }) as HTMLInputElement;
     autoConfirm.checked = r.autoConfirm;
 
-    const form = h("form", {
-      onsubmit: async (e: Event) => {
-        e.preventDefault();
-        try {
-          await api.put("/api/booking-rules", {
-            minNoticeMin: Number(minNotice.value),
-            maxAdvanceDays: Number(maxAdvance.value),
-            defaultBufferMin: Number(defBuffer.value),
-            slotGranularityMin: Number(granularity.value),
-            maxJobsPerDay: Number(maxJobs.value),
-            autoConfirm: autoConfirm.checked,
-          });
-          toast("Booking rules saved");
-        } catch (err) {
-          toast(errText(err), "error");
-        }
+    const form = h(
+      "form",
+      {
+        onsubmit: async (e: Event) => {
+          e.preventDefault();
+          try {
+            await api.put("/api/booking-rules", {
+              minNoticeMin: Number(minNotice.value),
+              maxAdvanceDays: Number(maxAdvance.value),
+              defaultBufferMin: Number(defBuffer.value),
+              slotGranularityMin: Number(granularity.value),
+              maxJobsPerDay: Number(maxJobs.value),
+              autoConfirm: autoConfirm.checked,
+            });
+            toast("Booking rules saved");
+          } catch (err) {
+            toast(errText(err), "error");
+          }
+        },
       },
-    }, [
-      field("Minimum notice (minutes)", minNotice),
-      field("Book up to (days ahead)", maxAdvance),
-      field("Default buffer (minutes)", defBuffer),
-      field("Slot granularity (minutes)", granularity, "5, 10, 15, 20, 30 or 60"),
-      field("Max jobs per day (0 = unlimited)", maxJobs),
-      h("label", { class: "field inline" }, [autoConfirm, h("span", {}, ["Auto-confirm bookings within rules"])]),
-      h("button", { class: "primary", type: "submit" }, ["Save booking rules"]),
-    ]);
+      [
+        field("Minimum notice (minutes)", minNotice),
+        field("Book up to (days ahead)", maxAdvance),
+        field("Default buffer (minutes)", defBuffer),
+        field("Slot granularity (minutes)", granularity, "5, 10, 15, 20, 30 or 60"),
+        field("Max jobs per day (0 = unlimited)", maxJobs),
+        h("label", { class: "field inline" }, [
+          autoConfirm,
+          h("span", {}, ["Auto-confirm bookings within rules"]),
+        ]),
+        h("button", { class: "primary", type: "submit" }, ["Save booking rules"]),
+      ],
+    );
     return h("div", {}, [h("h2", {}, ["Booking rules"]), form]);
   });
   return container;
@@ -307,18 +346,22 @@ export function knowledgeStep(): HTMLElement {
       const rows = knowledge.map((k) =>
         h("li", { class: "row" }, [
           h("div", {}, [h("strong", {}, [k.question]), h("p", { class: "muted" }, [k.answer])]),
-          h("button", {
-            class: "link danger",
-            onclick: async () => {
-              try {
-                await api.del(`/api/knowledge/${k.id}`);
-                toast("Removed");
-                void reload();
-              } catch (err) {
-                toast(errText(err), "error");
-              }
+          h(
+            "button",
+            {
+              class: "link danger",
+              onclick: async () => {
+                try {
+                  await api.del(`/api/knowledge/${k.id}`);
+                  toast("Removed");
+                  void reload();
+                } catch (err) {
+                  toast(errText(err), "error");
+                }
+              },
             },
-          }, ["Delete"]),
+            ["Delete"],
+          ),
         ]),
       );
 
@@ -326,31 +369,40 @@ export function knowledgeStep(): HTMLElement {
       const answer = textarea("answer");
       const tags = input("tags", "", "text");
 
-      const form = h("form", {
-        onsubmit: async (e: Event) => {
-          e.preventDefault();
-          try {
-            await api.post("/api/knowledge", {
-              question: question.value.trim(),
-              answer: answer.value.trim(),
-              tags: tags.value.split(",").map((t) => t.trim()).filter(Boolean),
-            });
-            toast("Added to knowledge base");
-            void reload();
-          } catch (err) {
-            toast(errText(err), "error");
-          }
+      const form = h(
+        "form",
+        {
+          onsubmit: async (e: Event) => {
+            e.preventDefault();
+            try {
+              await api.post("/api/knowledge", {
+                question: question.value.trim(),
+                answer: answer.value.trim(),
+                tags: tags.value
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+              });
+              toast("Added to knowledge base");
+              void reload();
+            } catch (err) {
+              toast(errText(err), "error");
+            }
+          },
         },
-      }, [
-        field("Question *", question),
-        field("Answer *", answer),
-        field("Tags", tags, "Comma-separated, optional"),
-        h("button", { class: "primary", type: "submit" }, ["Add entry"]),
-      ]);
+        [
+          field("Question *", question),
+          field("Answer *", answer),
+          field("Tags", tags, "Comma-separated, optional"),
+          h("button", { class: "primary", type: "submit" }, ["Add entry"]),
+        ],
+      );
 
       return h("div", {}, [
         h("h2", {}, ["Knowledge base / FAQ"]),
-        rows.length ? h("ul", { class: "list" }, rows) : h("p", { class: "muted" }, ["No entries yet."]),
+        rows.length
+          ? h("ul", { class: "list" }, rows)
+          : h("p", { class: "muted" }, ["No entries yet."]),
         form,
       ]);
     });

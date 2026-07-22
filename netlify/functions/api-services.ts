@@ -21,11 +21,13 @@ export default async (req: Request, context: Context): Promise<Response> =>
 
     if (!id) {
       return methodRouter(req, {
-        GET: async () =>
-          json({ services: await runInTenant(ctx, (tx) => listServices(ctx, tx)) }),
+        GET: async () => json({ services: await runInTenant(ctx, (tx) => listServices(ctx, tx)) }),
         POST: async () => {
           const input = await readJson(req, serviceSchema);
-          return json({ service: await runInTenant(ctx, (tx) => createService(ctx, input, tx)) }, 201);
+          return json(
+            { service: await runInTenant(ctx, (tx) => createService(ctx, input, tx)) },
+            201,
+          );
         },
       });
     }

@@ -4,7 +4,8 @@
  * before it leaves the process or lands in a durable record.
  */
 
-const SENSITIVE_KEY = /(token|secret|password|authorization|api[_-]?key|refresh|access[_-]?token|client[_-]?secret|signature|cookie|set-cookie|bearer)/i;
+const SENSITIVE_KEY =
+  /(token|secret|password|authorization|api[_-]?key|refresh|access[_-]?token|client[_-]?secret|signature|cookie|set-cookie|bearer)/i;
 const EMAIL_RE = /([A-Z0-9._%+-])[A-Z0-9._%+-]*(@[A-Z0-9.-]+\.[A-Z]{2,})/gi;
 const PHONE_RE = /(\+?\d[\d\s()-]{7,}\d)/g;
 

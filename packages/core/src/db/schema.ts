@@ -232,7 +232,9 @@ export const knowledgeItems = pgTable(
       .references(() => tenants.id, { onDelete: "cascade" }),
     question: text("question").notNull(),
     answer: text("answer").notNull(),
-    tags: jsonb("tags").notNull().default(sql`'[]'::jsonb`),
+    tags: jsonb("tags")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -252,7 +254,9 @@ export const connections = pgTable(
       .references(() => tenants.id, { onDelete: "cascade" }),
     provider: connectionProviderEnum("provider").notNull(),
     externalAccountId: text("external_account_id"),
-    scopes: jsonb("scopes").notNull().default(sql`'[]'::jsonb`),
+    scopes: jsonb("scopes")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     // Ciphertext only (AES-256-GCM). Never plaintext, never returned to client.
     accessTokenEnc: text("access_token_enc"),
     refreshTokenEnc: text("refresh_token_enc"),
@@ -532,10 +536,7 @@ export const auditLog = pgTable(
     ip: text("ip"),
     at: timestamp("at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [
-    index("audit_log_tenant_idx").on(t.tenantId),
-    index("audit_log_at_idx").on(t.at),
-  ],
+  (t) => [index("audit_log_tenant_idx").on(t.tenantId), index("audit_log_at_idx").on(t.at)],
 );
 
 export const webhookEvents = pgTable(

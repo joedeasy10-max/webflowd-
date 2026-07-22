@@ -33,7 +33,12 @@ export async function setHours(
     }
   });
   await writeAudit(
-    { tenantId: ctx.tenantId, actor: ctx.userId, action: "hours.updated", entityType: "business_hours" },
+    {
+      tenantId: ctx.tenantId,
+      actor: ctx.userId,
+      action: "hours.updated",
+      entityType: "business_hours",
+    },
     database,
   );
   return getHours(ctx, database);
@@ -72,7 +77,13 @@ export async function upsertException(
     })
     .returning();
   await writeAudit(
-    { tenantId: ctx.tenantId, actor: ctx.userId, action: "hours.updated", entityType: "hours_exception", entityId: row!.id },
+    {
+      tenantId: ctx.tenantId,
+      actor: ctx.userId,
+      action: "hours.updated",
+      entityType: "hours_exception",
+      entityId: row!.id,
+    },
     database,
   );
   return row!;

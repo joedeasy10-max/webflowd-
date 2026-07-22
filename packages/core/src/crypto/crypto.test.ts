@@ -84,7 +84,9 @@ describe("cryptorFromEnv", () => {
   it("throws when the key is missing or wrong size", () => {
     expect(() => cryptorFromEnv({} as NodeJS.ProcessEnv)).toThrow(CryptoError);
     expect(() =>
-      cryptorFromEnv({ TOKEN_ENCRYPTION_KEY: Buffer.alloc(16).toString("base64") } as NodeJS.ProcessEnv),
+      cryptorFromEnv({
+        TOKEN_ENCRYPTION_KEY: Buffer.alloc(16).toString("base64"),
+      } as NodeJS.ProcessEnv),
     ).toThrow(CryptoError);
   });
 });

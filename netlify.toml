@@ -12,36 +12,22 @@
 
 [functions]
   node_bundler = "esbuild"
-  # Bundle workspace packages into each function.
-  external_node_modules = []
 
-# Background functions (up to 15 min) for anything slow. The Inngest handler
-# and any *-background function fan out from webhooks; nothing slow runs inline.
-[functions."inngest"]
-  # Inngest calls this endpoint; keep it a normal function.
+# API and webhook routing is handled by each function's own `export const config
+# = { path: "/api/..." }` (Netlify Functions v2), so no manual /api/* redirect is
+# needed — and a generic splat redirect would actually break nested routes such
+# as /api/services/:id.
 
-# Friendly API routing → Netlify Functions.
-[[redirects]]
-  from = "/api/oauth/:provider/start"
-  to = "/.netlify/functions/api-oauth-start"
-  status = 200
+# Baseline security headers for the signed-in app.
+[[headers]]
+  for = "/app/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
 
-[[redirects]]
-  from = "/api/oauth/:provider/callback"
-  to = "/.netlify/functions/api-oauth-callback"
-  status = 200
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api-:splat"
-  status = 200
-
-[[redirects]]
-  from = "/webhooks/*"
-  to = "/.netlify/functions/webhook-:splat"
-  status = 200
-
-# SPA-ish fallback for the signed-in app.
+# SPA fallback for the signed-in app.
 [[redirects]]
   from = "/app/*"
   to = "/app/index.html"

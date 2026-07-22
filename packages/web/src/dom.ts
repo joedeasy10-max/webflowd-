@@ -30,11 +30,7 @@ export function mount(root: HTMLElement, ...nodes: Node[]): void {
   root.replaceChildren(...nodes);
 }
 
-export function field(
-  label: string,
-  input: HTMLElement,
-  hint?: string,
-): HTMLElement {
+export function field(label: string, input: HTMLElement, hint?: string): HTMLElement {
   return h("label", { class: "field" }, [
     h("span", { class: "field-label" }, [label]),
     input,

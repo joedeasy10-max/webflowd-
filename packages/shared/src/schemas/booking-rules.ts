@@ -4,11 +4,21 @@ import { z } from "zod";
 export const bookingRulesSchema = z
   .object({
     /** Minimum lead time before a slot can be booked. */
-    minNoticeMin: z.number().int().min(0).max(60 * 24 * 30).default(120),
+    minNoticeMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(60 * 24 * 30)
+      .default(120),
     /** How far ahead customers may book. */
     maxAdvanceDays: z.number().int().min(1).max(365).default(60),
     /** Default gap applied around jobs when a service has no explicit buffer. */
-    defaultBufferMin: z.number().int().min(0).max(8 * 60).default(0),
+    defaultBufferMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(8 * 60)
+      .default(0),
     /** Slot start granularity, in minutes (e.g. 15, 30, 60). */
     slotGranularityMin: z
       .number()

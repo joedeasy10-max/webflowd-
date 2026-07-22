@@ -25,12 +25,7 @@ export const CONNECTION_PROVIDERS = [
 ] as const;
 export type ConnectionProvider = (typeof CONNECTION_PROVIDERS)[number];
 
-export const CONVERSATION_STATUSES = [
-  "ai_handling",
-  "needs_human",
-  "resolved",
-  "spam",
-] as const;
+export const CONVERSATION_STATUSES = ["ai_handling", "needs_human", "resolved", "spam"] as const;
 export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number];
 
 export const BOOKING_STATUSES = [

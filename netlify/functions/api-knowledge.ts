@@ -25,7 +25,10 @@ export default async (req: Request, context: Context): Promise<Response> =>
           json({ knowledge: await runInTenant(ctx, (tx) => listKnowledge(ctx, tx)) }),
         POST: async () => {
           const input = await readJson(req, knowledgeItemSchema);
-          return json({ item: await runInTenant(ctx, (tx) => createKnowledge(ctx, input, tx)) }, 201);
+          return json(
+            { item: await runInTenant(ctx, (tx) => createKnowledge(ctx, input, tx)) },
+            201,
+          );
         },
       });
     }

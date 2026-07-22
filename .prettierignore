@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+packages/core/migrations
+# Docs contain hand-formatted tables/diagrams — leave them as authored.
+*.md

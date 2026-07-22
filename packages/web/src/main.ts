@@ -1,11 +1,5 @@
 import { api } from "./api.js";
-import {
-  getAuth0,
-  handleRedirectIfPresent,
-  isAuthenticated,
-  login,
-  logout,
-} from "./auth.js";
+import { getAuth0, handleRedirectIfPresent, isAuthenticated, login, logout } from "./auth.js";
 import { h, mount } from "./dom.js";
 import { assertConfigured } from "./env.js";
 import { STEPS } from "./steps.js";
@@ -35,11 +29,15 @@ function appView(me: Me): void {
 
   const tabs = STEPS.map((step) => {
     const done = me.onboarding[step.id];
-    return h("button", {
-      class: "tab",
-      "data-step": step.id,
-      onclick: () => selectStep(step.id),
-    }, [step.label, ...(done ? [h("span", { class: "badge" }, ["✓"])] : [])]);
+    return h(
+      "button",
+      {
+        class: "tab",
+        "data-step": step.id,
+        onclick: () => selectStep(step.id),
+      },
+      [step.label, ...(done ? [h("span", { class: "badge" }, ["✓"])] : [])],
+    );
   });
 
   function selectStep(id: string): void {

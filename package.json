@@ -12,7 +12,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "lint": "eslint .",
+    "lint": "prettier --check .",
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @webflowd/core db:generate",
     "db:migrate": "pnpm --filter @webflowd/core db:migrate"

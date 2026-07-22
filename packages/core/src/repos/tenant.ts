@@ -13,7 +13,7 @@ export interface Auth0Identity {
 }
 
 /** Default Mon–Fri 08:00–17:00, weekends closed. */
-function defaultWeeklyHours(tenantId: string) {
+export function defaultWeeklyHours(tenantId: string) {
   return [0, 1, 2, 3, 4, 5, 6].map((weekday) => {
     const isWeekend = weekday === 0 || weekday === 6;
     return {
@@ -26,7 +26,7 @@ function defaultWeeklyHours(tenantId: string) {
   });
 }
 
-function slugify(input: string): string {
+export function slugify(input: string): string {
   const base = input
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")

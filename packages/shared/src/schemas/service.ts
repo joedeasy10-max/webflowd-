@@ -6,9 +6,23 @@ export const serviceSchema = z
   .object({
     name: shortText,
     description: mediumText.optional(),
-    defaultDurationMin: z.number().int().min(5).max(24 * 60),
-    bufferBeforeMin: z.number().int().min(0).max(8 * 60).default(0),
-    bufferAfterMin: z.number().int().min(0).max(8 * 60).default(0),
+    defaultDurationMin: z
+      .number()
+      .int()
+      .min(5)
+      .max(24 * 60),
+    bufferBeforeMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(8 * 60)
+      .default(0),
+    bufferAfterMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(8 * 60)
+      .default(0),
     /** Free-text price note; the AI must not quote beyond this. */
     priceNote: shortText.optional(),
     depositRequired: z.boolean().default(false),
@@ -17,10 +31,10 @@ export const serviceSchema = z
     active: z.boolean().default(true),
   })
   .strict()
-  .refine(
-    (s) => !s.depositRequired || (s.depositAmountPence ?? 0) > 0,
-    { message: "depositAmountPence is required when depositRequired is true", path: ["depositAmountPence"] },
-  );
+  .refine((s) => !s.depositRequired || (s.depositAmountPence ?? 0) > 0, {
+    message: "depositAmountPence is required when depositRequired is true",
+    path: ["depositAmountPence"],
+  });
 
 export type ServiceInput = z.infer<typeof serviceSchema>;
 
@@ -28,9 +42,24 @@ export const serviceUpdateSchema = z
   .object({
     name: shortText.optional(),
     description: mediumText.optional(),
-    defaultDurationMin: z.number().int().min(5).max(24 * 60).optional(),
-    bufferBeforeMin: z.number().int().min(0).max(8 * 60).optional(),
-    bufferAfterMin: z.number().int().min(0).max(8 * 60).optional(),
+    defaultDurationMin: z
+      .number()
+      .int()
+      .min(5)
+      .max(24 * 60)
+      .optional(),
+    bufferBeforeMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(8 * 60)
+      .optional(),
+    bufferAfterMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(8 * 60)
+      .optional(),
     priceNote: shortText.optional(),
     depositRequired: z.boolean().optional(),
     depositAmountPence: z.number().int().min(0).max(1_000_000).optional(),
