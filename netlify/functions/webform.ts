@@ -2,19 +2,13 @@ import type { Config } from "@netlify/functions";
 import { z } from "zod";
 import {
   anthropicClient,
-  appendMessage,
   checkRateLimit,
-  classifySpam,
-  createConversation,
-  findOrCreateContact,
   getProfile,
+  ingestInboundMessage,
   resolveChatChannel,
-  runAssistantTurn,
   runInTenant,
   scheduleLeadFollowup,
   sendEmailViaSendGrid,
-  setConversationStatus,
-  writeAudit,
   type TenantContext,
 } from "@webflowd/core";
 import { json, methodRouter, readJson, withErrorHandling } from "./_lib/http.js";
@@ -31,10 +25,11 @@ const bodySchema = z.object({
 
 /**
  * POST /api/webform — public web-form / "contact us" ingestion.
- * Resolves the tenant from the widget public key, opens a web_form conversation,
- * runs the Claude engine to draft a reply, persists the exchange, and — since a
- * form submission has no live socket — emails the reply back to the sender if
- * they gave an email. Rate-limited and spam-filtered like the chat widget.
+ * Resolves the tenant from the widget public key, runs the message through the
+ * shared Claude ingestion pipeline (channel web_form), and — since a form
+ * submission has no live socket — emails the drafted reply back to the sender if
+ * they gave an email, then schedules a lead follow-up sequence. Rate-limited and
+ * spam-filtered like the chat widget.
  */
 export default async (req: Request): Promise<Response> =>
   withErrorHandling(() =>
@@ -54,68 +49,24 @@ export default async (req: Request): Promise<Response> =>
         if (!resolved) return json({ error: "Unknown key" }, 404);
 
         const ctx: TenantContext = { tenantId: resolved.tenantId, userId: "system", role: "owner" };
-        const spam = classifySpam(input.message);
 
         const result = await runInTenant(ctx, async (tx) => {
-          const contact = await findOrCreateContact(
-            ctx,
-            { name: input.name, email: input.email, phone: input.phone },
-            tx,
-          );
-          const conversation = await createConversation(
-            ctx,
-            { contactId: contact.id, channelId: resolved.channelId, subject: "Web form enquiry" },
-            tx,
-          );
-
-          await writeAudit(
-            {
-              tenantId: ctx.tenantId,
-              actor: "system",
-              action: "message.received",
-              entityType: "conversation",
-              entityId: conversation.id,
-              metadata: { channel: "web_form", spamScore: spam.score },
-            },
-            tx,
-          );
-          await appendMessage(
-            ctx,
-            {
-              conversationId: conversation.id,
-              direction: "inbound",
-              role: "customer",
-              body: input.message,
-              spamScore: spam.score,
-            },
-            tx,
-          );
-
-          if (spam.isSpam) {
-            await setConversationStatus(ctx, conversation.id, "spam", tx);
-            return { conversationId: conversation.id, delivered: false as const };
-          }
-
           const tenantData = await loadTenantData(ctx, tx);
-          const turn = await runAssistantTurn(ctx, {
-            tenantData,
-            history: [],
-            customerText: input.message,
-            channel: "web_form",
-            model: anthropicClient(),
-            deps: { db: tx, conversationId: conversation.id, env: process.env },
-          });
-
-          await appendMessage(
+          const ingest = await ingestInboundMessage(
             ctx,
             {
-              conversationId: conversation.id,
-              direction: "outbound",
-              role: "ai",
-              body: turn.replyText,
+              channel: "web_form",
+              channelId: resolved.channelId,
+              message: input.message,
+              visitor: { name: input.name, email: input.email, phone: input.phone },
+              subject: "Web form enquiry",
             },
-            tx,
+            { db: tx, model: anthropicClient(), tenantData, env: process.env },
           );
+
+          if (ingest.spam) {
+            return { conversationId: ingest.conversationId, delivered: false, spam: true };
+          }
 
           // Email the reply back to the sender (best-effort).
           let delivered = false;
@@ -124,14 +75,14 @@ export default async (req: Request): Promise<Response> =>
             input.email &&
             profile?.replyEmail &&
             process.env.SENDGRID_API_KEY &&
-            !turn.escalated
+            !ingest.escalated
           ) {
             await sendEmailViaSendGrid({
               apiKey: process.env.SENDGRID_API_KEY,
               from: profile.replyEmail,
               to: input.email,
               subject: `Re: your enquiry to ${profile.displayName}`,
-              text: turn.replyText,
+              text: ingest.reply,
             }).then(
               () => {
                 delivered = true;
@@ -140,32 +91,24 @@ export default async (req: Request): Promise<Response> =>
             );
           }
 
-          await writeAudit(
-            {
-              tenantId: ctx.tenantId,
-              actor: "ai",
-              action: "reply.sent",
-              entityType: "conversation",
-              entityId: conversation.id,
-              metadata: { channel: "web_form", escalated: turn.escalated, delivered },
-            },
-            tx,
-          );
-
           // Nurture the lead: schedule follow-ups (self-cancel if they book).
-          if (input.email || input.phone) {
+          if (ingest.contactId && (input.email || input.phone)) {
             await scheduleLeadFollowup(
               ctx,
               {
-                contactId: contact.id,
-                conversationId: conversation.id,
+                contactId: ingest.contactId,
+                conversationId: ingest.conversationId,
                 channel: input.phone ? "sms" : "email",
               },
               tx,
             );
           }
 
-          return { conversationId: conversation.id, delivered, escalated: turn.escalated };
+          return {
+            conversationId: ingest.conversationId,
+            delivered,
+            escalated: ingest.escalated,
+          };
         });
 
         return json({ ok: true, ...result }, 200);

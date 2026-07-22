@@ -12,5 +12,6 @@ export * from "./lifecycle/index.js";
 export * from "./lifecycle/sender.js";
 export * from "./lifecycle/missed-call.js";
 export * from "./lifecycle/lead-followup.js";
+export * from "./lifecycle/voicemail.js";
 export * from "./dashboard/index.js";
 export * from "./ai/index.js";
