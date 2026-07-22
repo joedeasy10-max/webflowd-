@@ -8,13 +8,21 @@ books jobs across channels — without the owner touching it.
 - **Plan & design:** [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - **Stable context for contributors / AI sessions:** [`CLAUDE.md`](./CLAUDE.md)
 - **Auth0 setup (API + SPA + email-claim Action):** [`docs/auth0-setup.md`](./docs/auth0-setup.md)
+- **Google Calendar OAuth setup:** [`docs/google-oauth-setup.md`](./docs/google-oauth-setup.md)
+- **Microsoft/Outlook OAuth setup:** [`docs/microsoft-oauth-setup.md`](./docs/microsoft-oauth-setup.md)
 
 ## Status
 
 **Phase 1 — Foundations & onboarding** (complete): multi-tenant schema +
 migrations, AES-256-GCM token crypto, tenancy guard + Postgres RLS, append-only
 audit log, Auth0 JWT verification, tenant provisioning, business-profile CRUD API,
-and the Auth0-gated onboarding UI. See `ARCHITECTURE.md` §9 for the phase plan.
+and the Auth0-gated onboarding UI.
+
+**Phase 2 — Connections & calendar read** (complete): PKCE OAuth connect flows
+for Google + Microsoft, encrypted token storage with auto-refresh + `needs_reauth`
+recovery, connections API, calendar free/busy read, and a Connections UI.
+
+See `ARCHITECTURE.md` §9 for the full phase plan.
 
 ## Stack
 

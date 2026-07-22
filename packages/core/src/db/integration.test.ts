@@ -4,21 +4,16 @@
  * append-only trigger — then exercise provisioning, CRUD, tenant isolation, and
  * database-level RLS. No external database or secrets required.
  */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ServiceInput } from "@webflowd/shared";
 import * as schema from "./schema.js";
 import type { Database } from "./client.js";
+import { freshTestDb, selectAsTenant } from "./pglite.testutil.js";
 import { getProfile, upsertProfile } from "../repos/profile.js";
 import { createService, listServices } from "../repos/services.js";
 import { getBookingRules, getHours, provisionTenant } from "../repos/index.js";
 import { runInTenant, type TenantContext } from "../tenancy/index.js";
-
-const migrationsDir = fileURLToPath(new URL("../../migrations/", import.meta.url));
 
 const SAMPLE_SERVICE: ServiceInput = {
   name: "Boiler service",
@@ -29,35 +24,8 @@ const SAMPLE_SERVICE: ServiceInput = {
   active: true,
 };
 
-async function freshDb(): Promise<{ client: PGlite; db: Database }> {
-  const client = new PGlite();
-  const files = readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
-  for (const f of files) {
-    await client.exec(readFileSync(path.join(migrationsDir, f), "utf8"));
-  }
-  // A non-superuser role so RLS is actually enforced (superusers bypass RLS).
-  await client.exec(`
-    CREATE ROLE app_user NOLOGIN;
-    GRANT USAGE ON SCHEMA public TO app_user;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
-  `);
-  const db = drizzle(client, { schema }) as unknown as Database;
-  return { client, db };
-}
-
-/** Run a script as the restricted app_user with a tenant GUC, return SELECTed rows. */
-async function asTenant(client: PGlite, tenantId: string, selectSql: string) {
-  const results = await client.exec(`
-    BEGIN;
-    SET LOCAL ROLE app_user;
-    SET LOCAL app.tenant_id = '${tenantId}';
-    ${selectSql};
-    ROLLBACK;
-  `);
-  return results.flatMap((r) => r.rows ?? []);
-}
+const freshDb = freshTestDb;
+const asTenant = selectAsTenant;
 
 describe("provisioning", () => {
   let db: Database;

@@ -410,10 +410,104 @@ export function knowledgeStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Calendar connections
+// ---------------------------------------------------------------------------
+interface Connection {
+  id: string;
+  provider: "google" | "microsoft" | string;
+  externalAccountId: string | null;
+  status: string;
+}
+
+function cleanQueryString(): void {
+  window.history.replaceState({}, document.title, "/app/");
+}
+
+export function connectionsStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+
+  // Surface the callback redirect result once, then clean the URL.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("connected")) {
+    toast(`Connected ${params.get("connected")}`);
+    cleanQueryString();
+  } else if (params.get("connect_error")) {
+    toast(`Connection failed: ${params.get("connect_error")}`, "error");
+    cleanQueryString();
+  }
+
+  const startConnect = async (provider: string) => {
+    try {
+      const { authorizationUrl } = await api.get<{ authorizationUrl: string }>(
+        `/api/oauth/${provider}/start`,
+      );
+      window.location.href = authorizationUrl;
+    } catch (err) {
+      toast(errText(err), "error");
+    }
+  };
+
+  const reload = () =>
+    renderInto(container, async () => {
+      const { connections } = await api.get<{ connections: Connection[] }>("/api/connections");
+      const byProvider = new Map(
+        connections.filter((c) => c.status !== "revoked").map((c) => [c.provider, c]),
+      );
+
+      const providerRow = (provider: string, label: string) => {
+        const conn = byProvider.get(provider);
+        if (conn && conn.status === "active") {
+          return h("div", { class: "row" }, [
+            h("span", {}, [
+              `${label} — connected${conn.externalAccountId ? ` (${conn.externalAccountId})` : ""}`,
+            ]),
+            h(
+              "button",
+              {
+                class: "link danger",
+                onclick: async () => {
+                  try {
+                    await api.del(`/api/connections/${conn.id}`);
+                    toast("Disconnected");
+                    void reload();
+                  } catch (err) {
+                    toast(errText(err), "error");
+                  }
+                },
+              },
+              ["Disconnect"],
+            ),
+          ]);
+        }
+        const needsReauth = conn?.status === "needs_reauth";
+        return h("div", { class: "row" }, [
+          h("span", {}, [label, needsReauth ? " — reconnect needed" : ""]),
+          h("button", { class: "primary", onclick: () => void startConnect(provider) }, [
+            needsReauth ? "Reconnect" : "Connect",
+          ]),
+        ]);
+      };
+
+      return h("div", {}, [
+        h("h2", {}, ["Calendar connections"]),
+        h("p", { class: "muted" }, [
+          "Connect a calendar so the assistant can check real availability and book jobs.",
+        ]),
+        providerRow("google", "Google Calendar"),
+        providerRow("microsoft", "Microsoft Outlook"),
+      ]);
+    });
+
+  void reload();
+  return container;
+}
+
 export const STEPS = [
   { id: "profile", label: "Profile", render: profileStep },
   { id: "services", label: "Services", render: servicesStep },
   { id: "hours", label: "Hours", render: hoursStep },
   { id: "rules", label: "Booking rules", render: bookingRulesStep },
   { id: "knowledge", label: "Knowledge", render: knowledgeStep },
+  { id: "connections", label: "Connections", render: connectionsStep },
 ] as const;
