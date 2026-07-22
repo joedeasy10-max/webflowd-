@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm version comes from the "packageManager" field in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build web app
+        run: pnpm --filter @webflowd/web build
+
+      - name: Check migrations are up to date
+        run: |
+          pnpm --filter @webflowd/core db:generate
+          if [ -n "$(git status --porcelain packages/core/migrations)" ]; then
+            echo "::error::Drizzle schema changed but migrations were not regenerated. Run 'pnpm db:generate'."
+            git --no-pager diff -- packages/core/migrations
+            exit 1
+          fi

@@ -1,0 +1,34 @@
+# Netlify configuration for the Webflow'd AI Admin Assistant.
+# The existing marketing site continues to be served as static HTML;
+# the signed-in app is built from packages/web and served under /app.
+
+[build]
+  command = "pnpm install && pnpm --filter @webflowd/web build"
+  publish = "packages/web/dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+# API and webhook routing is handled by each function's own `export const config
+# = { path: "/api/..." }` (Netlify Functions v2), so no manual /api/* redirect is
+# needed — and a generic splat redirect would actually break nested routes such
+# as /api/services/:id.
+
+# Baseline security headers for the signed-in app.
+[[headers]]
+  for = "/app/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# SPA fallback for the signed-in app.
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200

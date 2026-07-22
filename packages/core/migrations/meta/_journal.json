@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784742339613,
+      "tag": "0000_colossal_shocker",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784742351474,
+      "tag": "0001_rls_and_audit_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784748688270,
+      "tag": "0002_channels_not_tenant_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784750780696,
+      "tag": "0003_queues_not_tenant_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784753305309,
+      "tag": "0004_yielding_clea",
+      "breakpoints": true
+    }
+  ]
+}

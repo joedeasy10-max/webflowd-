@@ -1,0 +1,26 @@
+{
+  "name": "webflowd-assistant",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Webflow'd AI Admin Assistant — autonomous virtual receptionist for UK trade businesses",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "prettier --check .",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @webflowd/core db:generate",
+    "db:migrate": "pnpm --filter @webflowd/core db:migrate"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
