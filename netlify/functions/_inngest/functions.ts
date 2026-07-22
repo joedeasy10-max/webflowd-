@@ -1,5 +1,6 @@
 import {
   buildLifecycleSender,
+  processDueLeadFollowups,
   processDueReminders,
   processDueReviewRequests,
 } from "@webflowd/core";
@@ -37,4 +38,17 @@ export const reviewRequestsCron = inngest.createFunction(
   },
 );
 
-export const functions = [remindersCron, reviewRequestsCron];
+/**
+ * Cron: send due lead follow-ups. Runs hourly; nudges enquiries that haven't
+ * booked, self-cancelling any lead that has since converted, honouring opt-out.
+ */
+export const leadFollowupsCron = inngest.createFunction(
+  { id: "process-due-lead-followups", name: "Process due lead follow-ups" },
+  { cron: "0 * * * *" },
+  async ({ step }) => {
+    const sender = buildLifecycleSender(process.env);
+    return step.run("send-due-lead-followups", () => processDueLeadFollowups({ sender }));
+  },
+);
+
+export const functions = [remindersCron, reviewRequestsCron, leadFollowupsCron];

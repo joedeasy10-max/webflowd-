@@ -69,6 +69,13 @@ export const messageDirectionEnum = pgEnum("message_direction", ["inbound", "out
 export const messageRoleEnum = pgEnum("message_role", ["customer", "ai", "owner", "system"]);
 export const paymentTypeEnum = pgEnum("payment_type", ["deposit", "invoice"]);
 export const escalationStatusEnum = pgEnum("escalation_status", ["open", "resolved"]);
+export const quoteStatusEnum = pgEnum("quote_status", [
+  "draft",
+  "sent",
+  "accepted",
+  "declined",
+  "expired",
+]);
 
 // ---------------------------------------------------------------------------
 // Column helpers
@@ -467,6 +474,62 @@ export const reviewRequests = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [index("review_requests_tenant_idx").on(t.tenantId)],
+);
+
+/**
+ * Lead follow-up sequence: gentle nudges to an enquiry that hasn't booked yet.
+ * System-scanned operational queue (like reminders) — the cron finds due items
+ * across all tenants, so this table is intentionally not under tenant RLS
+ * (see migration 0004). Every row still carries tenant_id.
+ */
+export const leadFollowups = pgTable(
+  "lead_followups",
+  {
+    id: id(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    channel: channelTypeEnum("channel").notNull(),
+    step: integer("step").notNull().default(1),
+    sendAt: timestamp("send_at", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("scheduled"),
+    template: text("template"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("lead_followups_send_at_idx").on(t.sendAt)],
+);
+
+/** Price quotes sent to a lead; tenant-scoped, owner-managed. */
+export const quotes = pgTable(
+  "quotes",
+  {
+    id: id(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
+    description: text("description").notNull(),
+    amountPence: integer("amount_pence").notNull(),
+    currency: text("currency").notNull().default("gbp"),
+    status: quoteStatusEnum("status").notNull().default("draft"),
+    channel: channelTypeEnum("channel"),
+    validUntil: timestamp("valid_until", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("quotes_tenant_idx").on(t.tenantId)],
 );
 
 export const escalations = pgTable(

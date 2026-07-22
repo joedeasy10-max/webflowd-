@@ -11,6 +11,7 @@ import {
   resolveChatChannel,
   runAssistantTurn,
   runInTenant,
+  scheduleLeadFollowup,
   sendEmailViaSendGrid,
   setConversationStatus,
   writeAudit,
@@ -150,6 +151,19 @@ export default async (req: Request): Promise<Response> =>
             },
             tx,
           );
+
+          // Nurture the lead: schedule follow-ups (self-cancel if they book).
+          if (input.email || input.phone) {
+            await scheduleLeadFollowup(
+              ctx,
+              {
+                contactId: contact.id,
+                conversationId: conversation.id,
+                channel: input.phone ? "sms" : "email",
+              },
+              tx,
+            );
+          }
 
           return { conversationId: conversation.id, delivered, escalated: turn.escalated };
         });

@@ -775,6 +775,102 @@ export function dashboardStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Quotes
+// ---------------------------------------------------------------------------
+interface Quote {
+  id: string;
+  description: string;
+  amountPence: number;
+  currency: string;
+  status: string;
+  sentAt: string | null;
+}
+
+export function quotesStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+  const reload = () =>
+    renderInto(container, async () => {
+      const { quotes } = await api.get<{ quotes: Quote[] }>("/api/quotes");
+
+      const rows = quotes.map((q) => {
+        const amount = `£${(q.amountPence / 100).toFixed(2)}`;
+        const canSend = q.status === "draft";
+        const canClose = q.status === "sent";
+        const act = (label: string, body: unknown, done: string) =>
+          h(
+            "button",
+            {
+              class: "link",
+              onclick: async () => {
+                try {
+                  await api.patch(`/api/quotes/${q.id}`, body);
+                  toast(done);
+                  void reload();
+                } catch (err) {
+                  toast(errText(err), "error");
+                }
+              },
+            },
+            [label],
+          );
+        return h("li", { class: "row" }, [
+          h("span", {}, [`${amount} — ${q.description} · `, h("strong", {}, [q.status])]),
+          ...(canSend ? [act("Send", { action: "send" }, "Quote sent")] : []),
+          ...(canClose
+            ? [
+                act("Accepted", { action: "status", status: "accepted" }, "Marked accepted"),
+                act("Declined", { action: "status", status: "declined" }, "Marked declined"),
+              ]
+            : []),
+        ]);
+      });
+
+      const contactId = input("contactId");
+      const description = input("description");
+      const amount = input("amount", "", "number");
+      const send = h("input", { type: "checkbox", name: "send" });
+
+      const form = h(
+        "form",
+        {
+          onsubmit: async (e: Event) => {
+            e.preventDefault();
+            try {
+              await api.post("/api/quotes", {
+                contactId: contactId.value.trim() || undefined,
+                description: description.value.trim(),
+                amountPence: Math.round(Number(amount.value) * 100),
+                send: send.checked,
+              });
+              toast(send.checked ? "Quote created and sent" : "Quote created");
+              void reload();
+            } catch (err) {
+              toast(errText(err), "error");
+            }
+          },
+        },
+        [
+          field("Contact ID (optional)", contactId, "Attach the quote to an existing contact."),
+          field("Description *", description, "e.g. Full bathroom re-plumb"),
+          field("Amount (£) *", amount),
+          h("label", { class: "field inline" }, [send, h("span", {}, ["Send immediately"])]),
+          h("button", { class: "primary", type: "submit" }, ["Create quote"]),
+        ],
+      );
+
+      return h("div", {}, [
+        h("h2", {}, ["Quotes"]),
+        rows.length
+          ? h("ul", { class: "list" }, rows)
+          : h("p", { class: "muted" }, ["No quotes yet."]),
+        form,
+      ]);
+    });
+  void reload();
+  return container;
+}
+
 export const STEPS = [
   { id: "dashboard", label: "Dashboard", render: dashboardStep },
   { id: "profile", label: "Profile", render: profileStep },
@@ -785,4 +881,5 @@ export const STEPS = [
   { id: "connections", label: "Connections", render: connectionsStep },
   { id: "chat", label: "Test chat", render: testChatStep },
   { id: "bookings", label: "Bookings", render: bookingsStep },
+  { id: "quotes", label: "Quotes", render: quotesStep },
 ] as const;
