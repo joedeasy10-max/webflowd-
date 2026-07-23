@@ -20,6 +20,7 @@ code; that is enforced by the upload validator.
 | `after-hours-reassurance.json` | Softer, reassuring tone for out-of-hours enquiries (instructions only). |
 | `deposit-collection.json` | Enables the `deposits` feature flag and explains the deposit policy. |
 | `emergency-triage.json` | Detects urgent jobs and escalates them instead of offering a routine slot. |
+| `review-requests.json` | Enables the `review_requests` feature flag and asks happy customers for a review. |
 
 ## Manifest fields
 
