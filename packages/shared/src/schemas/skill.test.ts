@@ -1,5 +1,9 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { skillManifestSchema } from "./skill.js";
+
+const samplesDir = fileURLToPath(new URL("../../../../examples/skills/", import.meta.url));
 
 describe("skillManifestSchema", () => {
   it("accepts a valid instructions-only manifest", () => {
@@ -52,5 +56,25 @@ describe("skillManifestSchema", () => {
       instructions: "hi",
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("shipped sample skills", () => {
+  const files = readdirSync(samplesDir).filter((f) => f.endsWith(".json"));
+
+  it("ships some samples", () => {
+    expect(files.length).toBeGreaterThan(0);
+  });
+
+  it.each(files)("%s is a valid manifest", (file) => {
+    const raw = JSON.parse(readFileSync(samplesDir + file, "utf8"));
+    const r = skillManifestSchema.safeParse(raw);
+    expect(r.success).toBe(true);
+  });
+
+  it("the review-requests sample enables the review_requests feature", () => {
+    const raw = JSON.parse(readFileSync(samplesDir + "review-requests.json", "utf8"));
+    const m = skillManifestSchema.parse(raw);
+    expect(m.featureFlags).toContain("review_requests");
   });
 });

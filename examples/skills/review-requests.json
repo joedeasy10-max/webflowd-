@@ -1,0 +1,9 @@
+{
+  "key": "review-requests",
+  "name": "Review requests",
+  "description": "Asks happy customers for a review after a completed job.",
+  "category": "feature",
+  "instructions": "After a job is completed, and only if the customer sounds satisfied, warmly invite them to leave a quick review and mention it genuinely helps a small local business. Keep it to one short, no-pressure ask, thank them either way, and never chase a customer who declines or seems unhappy — flag_for_human instead so the team can follow up personally.",
+  "featureFlags": ["review_requests"],
+  "enabled": true
+}
