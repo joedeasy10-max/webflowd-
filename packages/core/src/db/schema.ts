@@ -532,6 +532,42 @@ export const quotes = pgTable(
   (t) => [index("quotes_tenant_idx").on(t.tenantId)],
 );
 
+/**
+ * Per-client (tenant) skills registry — the admin "upload a skill" surface.
+ * Skills are DECLARATIVE data, never executable code: `instructions` augments the
+ * AI system prompt at runtime and `config.featureFlags` toggles already-built
+ * server capabilities. This is what lets an admin add capabilities without a
+ * redeploy. Tenant-scoped + RLS-enforced (migration 0005).
+ */
+export const skills = pgTable(
+  "skills",
+  {
+    id: id(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    category: text("category").notNull().default("knowledge"),
+    /** Prompt instructions injected into the system prompt when enabled. */
+    instructions: text("instructions"),
+    /** Declarative config, e.g. { featureFlags: ["deposits"] }. Never code. */
+    config: jsonb("config")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    enabled: boolean("enabled").notNull().default(true),
+    /** 'builtin' (seeded) or 'uploaded' (admin-provided manifest). */
+    source: text("source").notNull().default("uploaded"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("skills_tenant_idx").on(t.tenantId),
+    uniqueIndex("skills_tenant_key_uq").on(t.tenantId, t.key),
+  ],
+);
+
 export const escalations = pgTable(
   "escalations",
   {

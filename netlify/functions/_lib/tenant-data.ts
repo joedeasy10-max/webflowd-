@@ -4,6 +4,7 @@ import {
   getProfile,
   listKnowledge,
   listServices,
+  loadEnabledSkillInstructions,
   type TenantContext,
   type TenantPromptData,
 } from "@webflowd/core";
@@ -13,12 +14,13 @@ export async function loadTenantData(
   ctx: TenantContext,
   tx: Parameters<typeof getProfile>[1],
 ): Promise<TenantPromptData> {
-  const [profile, services, hours, bookingRules, knowledge] = [
+  const [profile, services, hours, bookingRules, knowledge, skills] = [
     await getProfile(ctx, tx),
     await listServices(ctx, tx),
     await getHours(ctx, tx),
     await getBookingRules(ctx, tx),
     await listKnowledge(ctx, tx),
+    await loadEnabledSkillInstructions(ctx, tx),
   ];
   return {
     profile: profile
@@ -52,5 +54,6 @@ export async function loadTenantData(
     knowledge: knowledge
       .filter((k) => k.active)
       .map((k) => ({ question: k.question, answer: k.answer })),
+    skills,
   };
 }
