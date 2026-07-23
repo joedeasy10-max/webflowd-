@@ -47,6 +47,25 @@ describe("buildSystemPrompt", () => {
     expect(text).toContain("flag_for_human");
     expect(text).toContain("untrusted");
   });
+
+  it("injects enabled-skill instructions, subordinate to the hard rules", () => {
+    const withSkill = buildSystemPrompt({
+      ...data,
+      skills: [{ name: "After hours", instructions: "Be extra reassuring outside opening hours." }],
+    });
+    const text = withSkill.map((b) => b.text).join("\n");
+    expect(text).toContain("<enabled_skills>");
+    expect(text).toContain("After hours");
+    expect(text).toContain("Be extra reassuring");
+    expect(text).toContain("never override the Hard rules");
+  });
+
+  it("omits the skills block when there are none", () => {
+    const text = buildSystemPrompt(data)
+      .map((b) => b.text)
+      .join("\n");
+    expect(text).not.toContain("<enabled_skills>");
+  });
 });
 
 describe("wrapCustomerMessage", () => {

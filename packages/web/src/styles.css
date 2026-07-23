@@ -295,3 +295,23 @@ code {
 select.input {
   appearance: auto;
 }
+
+/* Admin skills — feature chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.75rem;
+}
+.chip {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.chip.on {
+  border-color: var(--ok);
+  color: var(--ok);
+  font-weight: 600;
+}

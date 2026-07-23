@@ -12,4 +12,5 @@ export * from "./escalations.js";
 export * from "./ai-actions.js";
 export * from "./bookings.js";
 export * from "./quotes.js";
+export * from "./skills.js";
 export * from "./webhooks.js";

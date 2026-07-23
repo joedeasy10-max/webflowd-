@@ -880,9 +880,12 @@ interface PhoneSettings {
   number?: string;
   enabled?: boolean;
   greeting?: string;
+  ttsProvider?: string;
   voice?: string;
+  elevenLabsVoiceId?: string;
   language?: string;
   speechTimeoutSec?: number | null;
+  elevenLabsReady?: boolean;
 }
 
 const VOICE_INBOUND_PATH = "/webhooks/twilio/voice-inbound";
@@ -985,11 +988,31 @@ export function phoneStep(): HTMLElement {
       const enabled = h("input", { type: "checkbox", name: "enabled" }) as HTMLInputElement;
       enabled.checked = s.enabled ?? true;
 
+      const provider = h("select", { name: "ttsProvider", class: "input" }, [
+        h(
+          "option",
+          { value: "twilio", ...(s.ttsProvider !== "elevenlabs" ? { selected: "selected" } : {}) },
+          ["Twilio (Amazon Polly) — active"],
+        ),
+        h(
+          "option",
+          {
+            value: "elevenlabs",
+            ...(s.ttsProvider === "elevenlabs" ? { selected: "selected" } : {}),
+          },
+          [
+            s.elevenLabsReady
+              ? "ElevenLabs (custom voice)"
+              : "ElevenLabs — connect account to activate",
+          ],
+        ),
+      ]) as HTMLSelectElement;
       const voice = h("select", { name: "voice", class: "input" }, [
         ...TTS_VOICES.map((v) =>
           h("option", { value: v, ...(s.voice === v ? { selected: "selected" } : {}) }, [v]),
         ),
       ]) as HTMLSelectElement;
+      const elevenVoiceId = input("elevenLabsVoiceId", s.elevenLabsVoiceId ?? "");
       const language = input("language", s.language ?? "en-GB");
       const speechTimeout = input(
         "speechTimeoutSec",
@@ -1008,7 +1031,9 @@ export function phoneStep(): HTMLElement {
                 number: number.value.trim(),
                 enabled: enabled.checked,
                 greeting: greeting.value.trim() || undefined,
+                ttsProvider: provider.value,
                 voice: voice.value,
+                elevenLabsVoiceId: elevenVoiceId.value.trim() || undefined,
                 language: language.value.trim() || "en-GB",
                 speechTimeoutSec: t ? Number(t) : null,
               });
@@ -1026,7 +1051,23 @@ export function phoneStep(): HTMLElement {
             greeting,
             "What the assistant says when it answers. Leave blank for a default.",
           ),
-          field("Voice", voice, "The text-to-speech voice callers hear."),
+          field(
+            "Voice provider",
+            provider,
+            s.elevenLabsReady
+              ? "Choose Twilio's built-in voices or your custom ElevenLabs voice."
+              : "ElevenLabs becomes available once we connect the ElevenLabs account; until then calls use the Twilio voice below.",
+          ),
+          field(
+            "Twilio voice",
+            voice,
+            "Used for Twilio, and as the fallback until ElevenLabs is connected.",
+          ),
+          field(
+            "ElevenLabs voice ID",
+            elevenVoiceId,
+            "Paste the voice id from your ElevenLabs library (used when the provider is ElevenLabs).",
+          ),
           field("Language", language, "BCP-47 tag Twilio uses for speech, e.g. en-GB."),
           field(
             "Pause before replying (seconds)",
@@ -1055,8 +1096,150 @@ export function phoneStep(): HTMLElement {
   return container;
 }
 
+// ---------------------------------------------------------------------------
+// Admin — Skills & Features
+// ---------------------------------------------------------------------------
+interface SkillRow {
+  key: string;
+  name: string;
+  description: string | null;
+  category: string;
+  enabled: boolean;
+  source: string;
+}
+interface SkillsResponse {
+  skills: SkillRow[];
+  activeFeatures: string[];
+  availableFeatures: string[];
+}
+
+const SKILL_TEMPLATE = JSON.stringify(
+  {
+    key: "after-hours-tone",
+    name: "After-hours tone",
+    description: "Softer, reassuring tone for out-of-hours enquiries.",
+    category: "knowledge",
+    instructions:
+      "If a customer messages outside opening hours, acknowledge we're closed, reassure them we'll respond first thing, and still offer to take their details.",
+    featureFlags: [],
+  },
+  null,
+  2,
+);
+
+export function adminStep(): HTMLElement {
+  const container = h("section", { class: "step" });
+  const reload = () =>
+    renderInto(container, async () => {
+      const data = await api.get<SkillsResponse>("/api/skills");
+
+      const skillRows = data.skills.map((s) => {
+        const toggle = h(
+          "button",
+          {
+            class: "link",
+            onclick: async () => {
+              try {
+                await api.patch(`/api/skills/${s.key}`, { enabled: !s.enabled });
+                toast(s.enabled ? "Skill disabled" : "Skill enabled");
+                void reload();
+              } catch (err) {
+                toast(errText(err), "error");
+              }
+            },
+          },
+          [s.enabled ? "Disable" : "Enable"],
+        );
+        const del = h(
+          "button",
+          {
+            class: "link danger",
+            onclick: async () => {
+              try {
+                await api.del(`/api/skills/${s.key}`);
+                toast("Skill removed");
+                void reload();
+              } catch (err) {
+                toast(errText(err), "error");
+              }
+            },
+          },
+          ["Delete"],
+        );
+        return h("li", { class: "row" }, [
+          h("span", {}, [
+            h("strong", {}, [s.name]),
+            ` · ${s.category}`,
+            s.enabled ? "" : " · off",
+            s.description ? ` — ${s.description}` : "",
+          ]),
+          toggle,
+          del,
+        ]);
+      });
+
+      const manifest = textarea("manifest", SKILL_TEMPLATE);
+      manifest.rows = 12;
+      const uploadForm = h(
+        "form",
+        {
+          onsubmit: async (e: Event) => {
+            e.preventDefault();
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(manifest.value);
+            } catch {
+              toast("That isn't valid JSON", "error");
+              return;
+            }
+            try {
+              await api.post("/api/skills", parsed);
+              toast("Skill installed");
+              void reload();
+            } catch (err) {
+              toast(errText(err), "error");
+            }
+          },
+        },
+        [
+          field(
+            "Skill manifest (JSON)",
+            manifest,
+            "Declarative only: instructions the assistant follows and/or feature toggles. No code.",
+          ),
+          h("button", { class: "primary", type: "submit" }, ["Install skill"]),
+        ],
+      );
+
+      const featureChip = (f: string, on: boolean) =>
+        h("span", { class: on ? "chip on" : "chip" }, [f]);
+
+      return h("div", {}, [
+        h("h2", {}, ["Admin — Skills & Features"]),
+        h("p", { class: "muted" }, [
+          "Extend what your assistant can do without a redeploy. Upload a skill manifest, then enable or disable it any time.",
+        ]),
+        h("h3", {}, ["Active features"]),
+        h(
+          "div",
+          { class: "chips" },
+          data.availableFeatures.map((f) => featureChip(f, data.activeFeatures.includes(f))),
+        ),
+        h("h3", {}, ["Installed skills"]),
+        skillRows.length
+          ? h("ul", { class: "list" }, skillRows)
+          : h("p", { class: "muted" }, ["No skills installed yet."]),
+        h("h3", {}, ["Upload a skill"]),
+        uploadForm,
+      ]);
+    });
+  void reload();
+  return container;
+}
+
 export const STEPS = [
   { id: "dashboard", label: "Dashboard", render: dashboardStep },
+  { id: "admin", label: "Admin", render: adminStep },
   { id: "profile", label: "Profile", render: profileStep },
   { id: "services", label: "Services", render: servicesStep },
   { id: "hours", label: "Hours", render: hoursStep },

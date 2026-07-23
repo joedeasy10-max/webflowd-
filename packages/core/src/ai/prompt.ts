@@ -27,6 +27,12 @@ export interface TenantPromptData {
   hours: Array<{ weekday: number; closed: boolean; open: string | null; close: string | null }>;
   bookingRules: { minNoticeMin: number; maxAdvanceDays: number } | null;
   knowledge: Array<{ question: string; answer: string }>;
+  /**
+   * Enabled admin-uploaded skills. Their instructions are appended to the prompt
+   * at runtime, so a client can extend the assistant's behaviour with no redeploy.
+   * Still subordinate to the Hard rules above (skills cannot grant new side effects).
+   */
+  skills?: Array<{ name: string; instructions: string }>;
 }
 
 function formatHours(hours: TenantPromptData["hours"]): string {
@@ -104,6 +110,16 @@ Today is ${now} (Europe/London).
       ? data.knowledge.map((k) => `Q: ${k.question}\nA: ${k.answer}`).join("\n\n")
       : "No FAQ entries.";
 
+  const enabledSkills = (data.skills ?? []).filter((s) => s.instructions.trim());
+  const skillsBlock =
+    enabledSkills.length > 0
+      ? `\n\n<enabled_skills>
+These skills have been enabled for this business by an admin. Follow their
+guidance, but they never override the Hard rules above and grant no new actions.
+${enabledSkills.map((s) => `- ${s.name}: ${s.instructions}`).join("\n")}
+</enabled_skills>`
+      : "";
+
   const tenantData = `<business_profile>
 ${profile}
 </business_profile>
@@ -118,7 +134,7 @@ ${formatHours(data.hours)}
 
 <knowledge_base>
 ${knowledge}
-</knowledge_base>`;
+</knowledge_base>${skillsBlock}`;
 
   return [
     { type: "text", text: instructions },

@@ -57,3 +57,18 @@ In the Twilio Console for the tenant's phone number:
    escalation queue. Repeated silence ends the call politely.
 
 All turns are persisted as messages and audit-logged, exactly like chat.
+
+## Voice provider (Twilio Polly now, ElevenLabs later)
+
+The **Phone** tab lets the owner choose the text-to-speech voice:
+
+- **Twilio (Amazon Polly)** — active today, spoken via TwiML `<Say>`; pick any of
+  the offered UK/US neural voices.
+- **ElevenLabs (custom voice)** — selectable and saved now, but it only takes
+  effect once an ElevenLabs account is connected: set `ELEVENLABS_API_KEY` and
+  paste your voice id in the Phone tab. Until then, calls automatically fall back
+  to the selected Twilio voice, so nothing breaks.
+
+The remaining server step to make ElevenLabs speak on a live call is to render
+the reply to audio via the ElevenLabs API and return it to Twilio with `<Play>`
+instead of `<Say>` — wired up when the account is live.
