@@ -1,0 +1,9 @@
+{
+  "key": "emergency-triage",
+  "name": "Emergency triage",
+  "description": "Spot urgent jobs (leaks, no heating, electrical faults) and prioritise them.",
+  "category": "workflow",
+  "instructions": "If a customer describes an emergency — an active water leak, a total loss of heating or hot water, a burst pipe, a gas smell, or an electrical fault that could be dangerous — treat it as urgent. For a suspected gas leak or immediate danger, advise them to call the relevant emergency line first, then flag_for_human so the team can respond fast. For other urgent jobs, gather the address and a contact number and flag_for_human rather than offering the next routine slot.",
+  "featureFlags": [],
+  "enabled": true
+}

@@ -1,0 +1,9 @@
+{
+  "key": "deposit-collection",
+  "name": "Deposit collection",
+  "description": "Turns on Stripe deposits and explains the policy to customers.",
+  "category": "feature",
+  "instructions": "When booking a service that requires a deposit, briefly explain that a small deposit secures the appointment and that a secure payment link will be sent. Be reassuring: the deposit comes off the final bill and the slot is held until it's paid.",
+  "featureFlags": ["deposits"],
+  "enabled": true
+}

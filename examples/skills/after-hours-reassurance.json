@@ -1,0 +1,9 @@
+{
+  "key": "after-hours-reassurance",
+  "name": "After-hours reassurance",
+  "description": "Warmer, reassuring handling for messages that arrive outside opening hours.",
+  "category": "knowledge",
+  "instructions": "If a customer contacts us outside our opening hours, warmly acknowledge that we're currently closed, reassure them we'll get back to them first thing during business hours, and still offer to take their name, number and a short description of the job so we can prioritise them. Never promise a specific callback time beyond 'first thing'.",
+  "featureFlags": [],
+  "enabled": true
+}
