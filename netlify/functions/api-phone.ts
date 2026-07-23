@@ -22,9 +22,13 @@ export default async (req: Request): Promise<Response> =>
           number: channel.identifier,
           enabled: channel.enabled,
           greeting: cfg.greeting ?? "",
+          ttsProvider: cfg.ttsProvider ?? "twilio",
           voice: cfg.voice ?? "Polly.Amy",
+          elevenLabsVoiceId: cfg.elevenLabsVoiceId ?? "",
           language: cfg.language ?? "en-GB",
           speechTimeoutSec: cfg.speechTimeoutSec ?? null,
+          // Whether the ElevenLabs provider is actually wired on the server yet.
+          elevenLabsReady: Boolean(process.env.ELEVENLABS_API_KEY),
         });
       },
       PUT: async () => {
@@ -32,7 +36,9 @@ export default async (req: Request): Promise<Response> =>
         const body = await readJson(req, voiceSettingsSchema);
         const config: Record<string, unknown> = {
           greeting: body.greeting,
+          ttsProvider: body.ttsProvider,
           voice: body.voice,
+          elevenLabsVoiceId: body.elevenLabsVoiceId,
           language: body.language,
           speechTimeoutSec: body.speechTimeoutSec,
         };

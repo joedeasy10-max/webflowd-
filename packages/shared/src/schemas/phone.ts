@@ -15,6 +15,16 @@ export const TTS_VOICES = [
 ] as const;
 
 /**
+ * Text-to-speech provider for the receptionist.
+ * - `twilio`: built-in Amazon Polly voices via TwiML `<Say>` (active now).
+ * - `elevenlabs`: a custom ElevenLabs voice (activates once an ElevenLabs
+ *   account + `ELEVENLABS_API_KEY` are connected; until then the call falls back
+ *   to the selected Polly voice).
+ */
+export const TTS_PROVIDERS = ["twilio", "elevenlabs"] as const;
+export type TtsProvider = (typeof TTS_PROVIDERS)[number];
+
+/**
  * Owner-configurable settings for the turn-based voice receptionist. Stored on
  * the tenant's `voice` channel (`identifier` = the phone number, the rest in
  * `inbound_config`) so the owner can tune it themselves with no redeploy.
@@ -26,7 +36,14 @@ export const voiceSettingsSchema = z
     enabled: z.boolean().default(true),
     /** Spoken greeting; falls back to a sensible default when omitted. */
     greeting: mediumText.optional(),
+    /** Which TTS provider speaks the replies. */
+    ttsProvider: z.enum(TTS_PROVIDERS).default("twilio"),
     voice: z.enum(TTS_VOICES).default("Polly.Amy"),
+    /**
+     * ElevenLabs voice id to use when `ttsProvider` is `elevenlabs`. Take it from
+     * your ElevenLabs voice library once your account is set up.
+     */
+    elevenLabsVoiceId: z.string().trim().max(64).optional(),
     /** BCP-47 language tag Twilio uses for STT + TTS. */
     language: z.string().trim().max(12).default("en-GB"),
     /**
@@ -42,7 +59,9 @@ export type VoiceSettingsInput = z.infer<typeof voiceSettingsSchema>;
 /** The subset persisted in `channels.inbound_config` (everything but the number). */
 export interface VoiceChannelConfig {
   greeting?: string;
+  ttsProvider?: TtsProvider;
   voice?: string;
+  elevenLabsVoiceId?: string;
   language?: string;
   speechTimeoutSec?: number | null;
 }
