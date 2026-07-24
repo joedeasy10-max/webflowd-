@@ -2,6 +2,7 @@ import type { Config, Context } from "@netlify/functions";
 import { FEATURE_FLAGS, skillManifestSchema, skillToggleSchema } from "@webflowd/shared";
 import {
   deleteSkill,
+  exportSkills,
   listSkills,
   loadActiveFeatureFlags,
   requireRole,
@@ -30,9 +31,10 @@ export default async (req: Request, context: Context): Promise<Response> =>
     if (!key) {
       return methodRouter(req, {
         GET: async () => {
-          const { list, active } = await runInTenant(ctx, async (tx) => ({
+          const { list, active, manifests } = await runInTenant(ctx, async (tx) => ({
             list: await listSkills(ctx, tx),
             active: await loadActiveFeatureFlags(ctx, tx),
+            manifests: await exportSkills(ctx, tx),
           }));
           return json({
             skills: list.map((s) => ({
@@ -46,6 +48,8 @@ export default async (req: Request, context: Context): Promise<Response> =>
             })),
             activeFeatures: active,
             availableFeatures: FEATURE_FLAGS,
+            // Re-importable manifests for backup / cloning to another client.
+            export: manifests,
           });
         },
         POST: async () => {
