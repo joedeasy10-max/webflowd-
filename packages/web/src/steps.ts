@@ -1111,6 +1111,15 @@ interface SkillsResponse {
   skills: SkillRow[];
   activeFeatures: string[];
   availableFeatures: string[];
+  export: unknown[];
+}
+
+function downloadJson(filename: string, data: unknown): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = h("a", { href: url, download: filename });
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 const SKILL_TEMPLATE = JSON.stringify(
@@ -1225,7 +1234,22 @@ export function adminStep(): HTMLElement {
           { class: "chips" },
           data.availableFeatures.map((f) => featureChip(f, data.activeFeatures.includes(f))),
         ),
-        h("h3", {}, ["Installed skills"]),
+        h("div", { class: "row" }, [
+          h("h3", {}, ["Installed skills"]),
+          ...(data.export.length
+            ? [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    class: "link",
+                    onclick: () => downloadJson("skills.json", data.export),
+                  },
+                  ["Export all"],
+                ),
+              ]
+            : []),
+        ]),
         skillRows.length
           ? h("ul", { class: "list" }, skillRows)
           : h("p", { class: "muted" }, ["No skills installed yet."]),

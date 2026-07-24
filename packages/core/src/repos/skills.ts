@@ -115,6 +115,39 @@ export async function deleteSkill(ctx: TenantContext, key: string, database: Dat
   );
 }
 
+type SkillRow = Awaited<ReturnType<typeof listSkills>>[number];
+
+/** Reconstruct a re-importable manifest from a stored skill row. */
+function skillRowToManifest(row: SkillRow): SkillManifest {
+  const cfg = (row.config ?? {}) as {
+    featureFlags?: FeatureFlag[];
+    settings?: Record<string, string | number | boolean>;
+  };
+  return {
+    key: row.key,
+    name: row.name,
+    category: row.category as SkillManifest["category"],
+    featureFlags: cfg.featureFlags ?? [],
+    enabled: row.enabled,
+    ...(row.description ? { description: row.description } : {}),
+    ...(row.instructions ? { instructions: row.instructions } : {}),
+    ...(cfg.settings && Object.keys(cfg.settings).length ? { settings: cfg.settings } : {}),
+  } satisfies SkillManifest;
+}
+
+/**
+ * Export a tenant's installed skills as re-importable manifests — for backup, or
+ * to clone one client's setup onto another. Each returned object round-trips
+ * through `skillManifestSchema` and `upsertSkillFromManifest`.
+ */
+export async function exportSkills(
+  ctx: TenantContext,
+  database: Database = getDb(),
+): Promise<SkillManifest[]> {
+  const rows = await listSkills(ctx, database);
+  return rows.map(skillRowToManifest);
+}
+
 /** Enabled skills' prompt instructions, for injection into the system prompt. */
 export async function loadEnabledSkillInstructions(
   ctx: TenantContext,
