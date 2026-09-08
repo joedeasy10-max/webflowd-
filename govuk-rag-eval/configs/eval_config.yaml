@@ -8,7 +8,10 @@
 
 dataset:
   path: data/golden/questions.jsonl
-  version: v3           # bump on every change to the golden set
+  version: v1           # bump on every change to the golden set
+  # Aligned to the shipped starter golden set (v1). Bumps to v3 when the full
+  # 150-300 record set lands (build step 3), which also invalidates the baseline
+  # until it is regenerated on the new version.
   # A baseline is only comparable within the same dataset version.
   # compare.py refuses to gate across versions and warns instead.
 
