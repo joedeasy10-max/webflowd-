@@ -20,8 +20,8 @@ Steps are defined in `BUILD.md` → "Build order". There are **8**.
 | 3 | Golden set to full size (150–300, hand-reviewed) | ⬜ blocked: needs GOV.UK crawl (sandbox egress denies gov.uk) |
 | 4 | **Generation + RAGAS judge metrics** (median-of-N, measure variance) | 🟡 scaffolded — pipeline + median-of-N done; real RAGAS grader lazy-wired |
 | 5 | **CI gate** — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 wired + proven end-to-end; activates with `OPENAI_API_KEY` + a real baseline |
-| 6 | Regression demos — 3 blocked PRs | ⬜ |
-| 7 | Experiment benchmark — run all 4 configs, publish table | 🟡 configs stubbed |
+| 6 | Regression demos — 3 blocked PRs | 🟡 chunk-size demo proven offline (gate blocks); top_k/embedding demos need real data |
+| 7 | Experiment benchmark — `run_experiments.py` + table | 🟡 runner done + demoed; real table needs embeddings |
 | 8 | Corpus-drift workflow (`refresh-corpus.yml`) | ⬜ |
 
 The gate lives at the **repo root** workflow `.github/workflows/rag-eval.yml`
@@ -125,3 +125,38 @@ that measured variance is what justifies the wide tolerance bands in
 lazy-imported) or `heuristic` (deterministic offline stub, **not** a real quality
 signal). The real RAGAS grader is wired but not exercised by tests — no test calls
 an LLM.
+
+### Regression demos (step 6)
+
+Three deliberate regressions the gate is meant to catch, each a one-line edit to
+`configs/retrieval.yaml`:
+
+| Demo | Edit | Offline-provable here? |
+| --- | --- | --- |
+| Chunking | `chunk_size: 512 → 2000` | ✅ yes — `tests/test_regression_demo.py` shows the gate failing (exit 1) |
+| Retrieval depth | `top_k: 5 → 2` | ⬜ needs the full golden set (on the 3-record starter every relevant chunk is already rank 1) |
+| Embedding | `text-embedding-3-small → a weaker model` | ⬜ needs real embeddings (a key) |
+
+The chunk-size demo is proven deterministically: a bigger chunk size collapses
+pages and invalidates the golden set's `#chunk-N` references, so metrics fall
+below their floor and `compare.py` blocks the PR. The other two behave the same
+way once the real corpus/model and full golden set are in place.
+
+### Experiment benchmark (step 7)
+
+`scripts/run_experiments.py` runs several configs over one shared corpus + golden
+set and emits a comparison table (winner = best primary metric); a config whose
+retriever/embedder can't run (e.g. `hybrid`, or `openai`/`bge` without a key) is
+reported as skipped, not a crash.
+
+```bash
+python scripts/run_experiments.py \
+    --dataset data/golden/questions.jsonl \
+    --configs configs/experiments/*.yaml \
+    --primary-metric mrr --out results/experiments
+```
+
+Real numbers for the four named experiments (`baseline`, `small_chunks`,
+`hybrid_bm25`, `reranked`) go here once embeddings are available; see
+`results/experiments/README.md`. The runner and its table are proven offline in
+`tests/test_run_experiments.py` (including the chunk-size effect).

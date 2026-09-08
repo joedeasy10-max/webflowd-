@@ -42,7 +42,7 @@ def build_index(pages: list[Page], config: Config, out_dir: str | Path):
     return store
 
 
-def _gather_pages(config: Config) -> list[Page]:
+def gather_pages(config: Config) -> list[Page]:
     """Load the corpus for a real run.
 
     If a manifest already exists, rebuild deterministically from it (fetching
@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
-    pages = _gather_pages(config)
+    pages = gather_pages(config)
     store = build_index(pages, config, args.out)
     print(
         f"Indexed {len(store._chunks)} chunks from {len(pages)} pages "
