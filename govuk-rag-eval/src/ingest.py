@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     pages = _gather_pages(config)
     store = build_index(pages, config, args.out)
     print(
-        f"Indexed {store._chunks.__len__()} chunks from {len(pages)} pages "
+        f"Indexed {len(store._chunks)} chunks from {len(pages)} pages "
         f"-> {args.out} (embedder={store.embedder_id}, fingerprint={store.config_fingerprint})"
     )
     return 0
