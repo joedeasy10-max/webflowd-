@@ -1,11 +1,21 @@
 name: RAG Evaluation
 
+# Gate for the govuk-rag-eval subproject. The project lives under
+# govuk-rag-eval/, so `run:` steps use that as their working directory and the
+# repo-root-relative paths (cache, hashFiles, git show, github-script,
+# upload-artifact) are prefixed explicitly.
+#
+# The whole pipeline is guarded on OPENAI_API_KEY being configured: without the
+# secret every real step is skipped and the job passes with a notice, so this
+# never becomes a red check on a repo that has not opted in. It activates once
+# the secret is set and a real corpus + golden set exist (build step 3).
+
 on:
   pull_request:
     paths:
-      - "src/**"
-      - "configs/**"
-      - "data/golden/**"
+      - "govuk-rag-eval/src/**"
+      - "govuk-rag-eval/configs/**"
+      - "govuk-rag-eval/data/golden/**"
       - ".github/workflows/rag-eval.yml"
   schedule:
     # Nightly full run, including the expensive LLM-judge metrics
@@ -20,6 +30,10 @@ permissions:
   contents: read
   pull-requests: write
 
+defaults:
+  run:
+    working-directory: govuk-rag-eval
+
 jobs:
   evaluate:
     runs-on: ubuntu-latest
@@ -29,6 +43,9 @@ jobs:
       # on manual dispatch, or when a PR carries the `full-eval` label.
       RUN_JUDGE: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-eval') }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # The gate needs the embedder key. Without it, skip every real step so the
+      # job stays green until the repo opts in (see header).
+      HAS_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -36,52 +53,68 @@ jobs:
           # Need main's baseline metrics for the delta comparison
           fetch-depth: 0
 
+      - name: Gate inactive notice
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "OPENAI_API_KEY is not configured — RAG eval gate is inactive."
+          echo "Set the secret and commit a baseline to activate (see govuk-rag-eval/results/README.md)."
+
       - uses: actions/setup-python@v5
+        if: env.HAS_KEY == 'true'
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
+        if: env.HAS_KEY == 'true'
         run: pip install -r requirements.lock
 
       # The index is deterministic given the corpus + retrieval config, so
       # key the cache on both. A config change correctly forces a rebuild.
       - name: Cache vector index
         id: index-cache
+        if: env.HAS_KEY == 'true'
         uses: actions/cache@v4
         with:
-          path: .index/
-          key: index-${{ hashFiles('configs/retrieval.yaml', 'data/corpus/manifest.json') }}
+          path: govuk-rag-eval/.index/
+          key: index-${{ hashFiles('govuk-rag-eval/configs/retrieval.yaml', 'govuk-rag-eval/data/corpus/manifest.json') }}
 
       - name: Build index
-        if: steps.index-cache.outputs.cache-hit != 'true'
+        if: env.HAS_KEY == 'true' && steps.index-cache.outputs.cache-hit != 'true'
         run: python -m src.ingest --config configs/retrieval.yaml --out .index/
 
       - name: Run retrieval evaluation (deterministic, always)
+        if: env.HAS_KEY == 'true'
         run: |
           python -m src.evaluate \
             --suite retrieval \
             --dataset data/golden/questions.jsonl \
             --config configs/retrieval.yaml \
+            --index .index/ \
             --out results/current.json
 
       - name: Run judge evaluation (RAGAS)
-        if: env.RUN_JUDGE == 'true'
+        if: env.HAS_KEY == 'true' && env.RUN_JUDGE == 'true'
         run: |
+          pip install -r requirements-judge.lock
           python -m src.evaluate \
             --suite judge \
             --dataset data/golden/questions.jsonl \
             --config configs/retrieval.yaml \
+            --index .index/ \
+            --judge-backend ragas \
             --runs 3 \
             --merge-into results/current.json
 
       - name: Fetch baseline from main
+        if: env.HAS_KEY == 'true'
         run: |
-          git show origin/${{ github.base_ref || 'main' }}:results/baseline.json > results/baseline.json \
+          git show origin/${{ github.base_ref || 'main' }}:govuk-rag-eval/results/baseline.json > results/baseline.json \
             || echo '{}' > results/baseline.json
 
       - name: Compare against baseline
         id: compare
+        if: env.HAS_KEY == 'true'
         continue-on-error: true
         run: |
           python scripts/compare.py \
@@ -91,12 +124,12 @@ jobs:
             --markdown results/report.md
 
       - name: Comment on PR
-        if: github.event_name == 'pull_request' && always()
+        if: env.HAS_KEY == 'true' && github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const body = fs.readFileSync('results/report.md', 'utf8');
+            const body = fs.readFileSync('govuk-rag-eval/results/report.md', 'utf8');
             const marker = '<!-- rag-eval-report -->';
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -122,14 +155,14 @@ jobs:
             }
 
       - name: Upload artefacts
-        if: always()
+        if: env.HAS_KEY == 'true' && always()
         uses: actions/upload-artifact@v4
         with:
           name: eval-results-${{ github.run_id }}
-          path: results/
+          path: govuk-rag-eval/results/
 
       # compare.py exits non-zero on a threshold breach; this step surfaces it
       # after the comment has been posted, so a failing PR still gets its table.
       - name: Enforce gate
-        if: steps.compare.outcome == 'failure'
+        if: env.HAS_KEY == 'true' && steps.compare.outcome == 'failure'
         run: exit 1

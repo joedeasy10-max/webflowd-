@@ -47,7 +47,7 @@ def _run(tmp_path, current: dict | None, baseline: dict | None) -> tuple[int, st
     return code, (md.read_text() if md.exists() else "")
 
 
-def _current(hit_at_5=0.90, version="v3"):
+def _current(hit_at_5=0.90, version="v1"):  # matches configs/eval_config.yaml
     return {
         "dataset_version": version,
         "retrieval": {"hit_at_5": hit_at_5, "mrr": 0.70, "context_recall_at_10": 0.91},
@@ -82,8 +82,8 @@ def test_no_baseline_reports_only(tmp_path):
 
 
 def test_dataset_version_mismatch_baseline_vs_current_reports_only(tmp_path):
-    # current matches config (v3), baseline is the old v2 -> not comparable.
-    code, report = _run(tmp_path, _current(version="v3"), _current(version="v2"))
+    # current matches config (v1), baseline is an older v0 -> not comparable.
+    code, report = _run(tmp_path, _current(version="v1"), _current(version="v0"))
     assert code == 0
     assert "not comparable across versions" in report
 

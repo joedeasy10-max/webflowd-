@@ -5,6 +5,7 @@ data/corpus/raw/*
 results/*.json
 results/*.md
 !results/baseline.json
+!results/README.md
 !results/.gitkeep
 
 # Python

@@ -19,15 +19,24 @@ Steps are defined in `BUILD.md` → "Build order". There are **8**.
 | 2 | **Retrieval metrics** (hit@5, MRR, recall@10) + `src/evaluate.py` | ✅ done |
 | 3 | Golden set to full size (150–300, hand-reviewed) | ⬜ blocked: needs GOV.UK crawl (sandbox egress denies gov.uk) |
 | 4 | **Generation + RAGAS judge metrics** (median-of-N, measure variance) | 🟡 scaffolded — pipeline + median-of-N done; real RAGAS grader lazy-wired |
-| 5 | CI gate — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 evaluate + compare exist; needs a committed baseline + version alignment |
+| 5 | **CI gate** — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 wired + proven end-to-end; activates with `OPENAI_API_KEY` + a real baseline |
 | 6 | Regression demos — 3 blocked PRs | ⬜ |
 | 7 | Experiment benchmark — run all 4 configs, publish table | 🟡 configs stubbed |
 | 8 | Corpus-drift workflow (`refresh-corpus.yml`) | ⬜ |
 
-Step 5's ready-made pieces (`configs/eval_config.yaml`, `scripts/compare.py`,
-`.github/workflows/rag-eval.yml`) are committed and `compare.py` is unit-tested,
-but the gate isn't live until `src/evaluate.py` (steps 2/4) and a committed
-`results/baseline.json` exist.
+The gate lives at the **repo root** workflow `.github/workflows/rag-eval.yml`
+(GitHub only runs workflows from the root; the steps `cd` into `govuk-rag-eval/`).
+`evaluate` + `compare.py` are wired and the full pass/fail chain is proven
+offline in `tests/test_gate.py` (a run matching baseline passes; a regression
+below a floor fails; no baseline reports-only). The `eval_config` dataset version
+is aligned to the shipped golden set (`v1`), and `results/baseline.json` is an
+intentional `{}` placeholder (reporting-only). The workflow is **guarded on
+`OPENAI_API_KEY`**: without the secret every real step skips and the job stays
+green, so it is never a red check; it activates once the secret is set and a real
+corpus + golden set (step 3) + committed baseline exist — see
+`results/README.md`. If this subproject is ever split into its own repo, move the
+root workflow to that repo's `.github/workflows/` and drop the `govuk-rag-eval/`
+path prefixes.
 
 ## Everything is a config value
 
