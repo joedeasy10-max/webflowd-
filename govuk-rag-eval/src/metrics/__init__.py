@@ -1,6 +1,6 @@
 """Retrieval + judge metrics.
 
-Placeholder for build step 2 (hand-written hit@k, MRR, recall@k — deterministic)
-and step 4 (RAGAS judge wrapper, median-of-N). Nothing here yet: step 1 is
-ingest + retrieve only.
+* retrieval.py — hand-written hit@k, MRR, recall@k. Deterministic, LLM-free.
+  These carry the PR gate (build step 2).
+* judge.py — RAGAS wrapper, median-of-N. Build step 4 (not present yet).
 """
