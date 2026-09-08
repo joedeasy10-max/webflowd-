@@ -4,9 +4,13 @@ data/corpus/raw/*
 !data/corpus/raw/.gitkeep
 results/*.json
 results/*.md
+results/experiments/*.json
+results/experiments/table.md
 !results/baseline.json
 !results/README.md
+!results/experiments/README.md
 !results/.gitkeep
+.experiments/
 
 # Python
 __pycache__/
