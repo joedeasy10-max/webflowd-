@@ -1,7 +1,7 @@
 """Answer synthesis — the deterministic offline generator."""
 
 from src.config import from_dict
-from src.generate import EchoGenerator, build_generator
+from src.generate import AnthropicGenerator, EchoGenerator, OpenAIGenerator, build_generator
 
 
 def test_echo_answers_from_context():
@@ -34,6 +34,34 @@ def test_build_generator_openai_id_without_calling():
     cfg = from_dict({"generation": {"provider": "openai", "model": "gpt-4o-mini"}})
     # Construction must not require the SDK or a key (import is lazy).
     assert build_generator(cfg).generator_id == "openai-gpt-4o-mini"
+
+
+def test_openai_blank_model_uses_default():
+    cfg = from_dict({"generation": {"provider": "openai"}})  # model blank
+    assert build_generator(cfg).generator_id == "openai-gpt-4o-mini"
+
+
+def test_build_generator_anthropic_id_without_calling():
+    cfg = from_dict({"generation": {"provider": "anthropic", "model": "claude-opus-5"}})
+    # Construction must not require the anthropic SDK or a key (import is lazy).
+    assert build_generator(cfg).generator_id == "anthropic-claude-opus-5"
+
+
+def test_anthropic_blank_model_uses_default():
+    cfg = from_dict({"generation": {"provider": "anthropic"}})  # model blank
+    assert build_generator(cfg).generator_id == "anthropic-claude-sonnet-5"
+
+
+def test_anthropic_falls_back_when_model_is_for_other_provider():
+    # Flipping only `provider` (leaving a gpt-* model) still yields a Claude model.
+    cfg = from_dict({"generation": {"provider": "anthropic", "model": "gpt-4o-mini"}})
+    assert build_generator(cfg).generator_id == "anthropic-claude-sonnet-5"
+
+
+def test_generators_are_interchangeable_selection():
+    assert isinstance(build_generator(from_dict({"generation": {"provider": "openai"}})), OpenAIGenerator)
+    assert isinstance(build_generator(from_dict({"generation": {"provider": "anthropic"}})), AnthropicGenerator)
+    assert isinstance(build_generator(from_dict({"generation": {"provider": "echo"}})), EchoGenerator)
 
 
 def test_build_generator_rejects_unknown():

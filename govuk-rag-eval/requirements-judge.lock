@@ -10,5 +10,9 @@
 # Verify/refresh these against a cold runner when the judge step is first wired
 # into CI (build step 5).
 ragas==0.1.21
-openai==1.51.0
 datasets==2.20.0
+# Judge/generation LLM providers — interchangeable (install what you use).
+openai==1.51.0
+langchain-openai==0.1.25
+anthropic==0.39.0
+langchain-anthropic==0.2.4

@@ -12,6 +12,10 @@ Providers:
   * openai  - text-embedding-3-small (the real default). Needs OPENAI_API_KEY.
   * bge     - local sentence-transformers BAAI/bge-small-en-v1.5 (the swap target).
 
+Note: Anthropic has no embeddings API, so there is no `anthropic` embedder — an
+Anthropic-only setup uses the local `bge` embedder here and Claude only for
+generation/judge (see src/generate.py).
+
 Every embedder reports a stable `embedder_id` recorded in the index metadata so
 a query can never be embedded by a different model than the one that built the
 index.

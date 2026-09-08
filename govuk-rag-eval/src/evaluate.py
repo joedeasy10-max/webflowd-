@@ -110,6 +110,7 @@ def run_judge_suite(
     backend: str,
     caps: dict,
     limit: int | None = None,
+    judge_provider: str = "openai",
 ) -> dict:
     """Generate answers over the golden questions and grade them (median-of-N).
 
@@ -118,7 +119,7 @@ def run_judge_suite(
     """
     retriever = Retriever(config, index_dir)
     generator = build_generator(config)
-    grader = J.build_grader(backend, model=config.generation.model)
+    grader = J.build_grader(backend, provider=judge_provider)
 
     answerable = [r for r in records if r.is_answerable]
     max_q = caps["max_judge_questions_per_run"]
@@ -181,6 +182,10 @@ def main(argv: list[str] | None = None) -> int:
         help="judge grader: ragas (real, needs a key) or heuristic (offline stub)",
     )
     parser.add_argument(
+        "--judge-provider", choices=["openai", "anthropic"], default="openai",
+        help="LLM provider for the ragas judge",
+    )
+    parser.add_argument(
         "--eval-config", type=Path, default=Path("configs/eval_config.yaml"),
         help="source of judge cost caps",
     )
@@ -204,6 +209,7 @@ def main(argv: list[str] | None = None) -> int:
         suite = run_judge_suite(
             records, config, index_dir, runs=args.runs,
             backend=args.judge_backend, caps=caps, limit=args.limit,
+            judge_provider=args.judge_provider,
         )
         payload["judge"] = suite["metrics"]
         payload["judge_runs"] = suite["runs"]
