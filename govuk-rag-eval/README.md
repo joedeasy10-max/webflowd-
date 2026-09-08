@@ -17,8 +17,8 @@ Steps are defined in `BUILD.md` → "Build order". There are **8**.
 |---|------|-------|
 | 1 | **Ingest + retrieve** — crawl, chunk, index, `retrieve(question)` | ✅ done |
 | 2 | **Retrieval metrics** (hit@5, MRR, recall@10) + `src/evaluate.py` | ✅ done |
-| 3 | Golden set to full size (150–300, hand-reviewed) | ⬜ next |
-| 4 | Generation + RAGAS judge metrics (median-of-3, measure variance) | ⬜ |
+| 3 | Golden set to full size (150–300, hand-reviewed) | ⬜ blocked: needs GOV.UK crawl (sandbox egress denies gov.uk) |
+| 4 | **Generation + RAGAS judge metrics** (median-of-N, measure variance) | 🟡 scaffolded — pipeline + median-of-N done; real RAGAS grader lazy-wired |
 | 5 | CI gate — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 evaluate + compare exist; needs a committed baseline + version alignment |
 | 6 | Regression demos — 3 blocked PRs | ⬜ |
 | 7 | Experiment benchmark — run all 4 configs, publish table | 🟡 configs stubbed |
@@ -71,10 +71,12 @@ hand.
 
 ## Layout
 
-See `BUILD.md` → "Repo structure". This tree implements steps 1–2:
+See `BUILD.md` → "Repo structure". This tree implements steps 1, 2 and 4:
 step 1 (`src/config.py`, `corpus.py`, `chunk.py`, `embed.py`, `store.py`,
-`ingest.py`, `retrieve.py`) and step 2 (`src/golden.py`, `src/evaluate.py`,
-`src/metrics/retrieval.py`), plus the step-5 gate files.
+`ingest.py`, `retrieve.py`), step 2 (`src/golden.py`, `src/evaluate.py`,
+`src/metrics/retrieval.py`) and step 4, scaffolded (`src/generate.py`,
+`src/metrics/judge.py` + the judge suite in `src/evaluate.py`), plus the step-5
+gate files.
 
 ### Evaluate
 
@@ -90,3 +92,27 @@ system actually returns (`retrieval.top_k`) — so a `top_k` regression shows up
 `hit@5`/`recall@10`. Negatives (unanswerable questions) are excluded from these
 aggregates; refusal behaviour is a generation concern (step 4). Use `--limit` to
 cap questions in a dev loop.
+
+### Judge suite (step 4, scaffolded)
+
+```bash
+# Offline / deterministic (no key, no cost) — what the tests use:
+python -m src.evaluate --suite judge \
+    --dataset data/golden/questions.jsonl --config configs/retrieval.yaml \
+    --index .index/ --judge-backend heuristic --runs 3 \
+    --merge-into results/current.json
+
+# Real judge metrics (RAGAS) — needs OPENAI_API_KEY and the judge extras:
+pip install -r requirements-judge.lock
+python -m src.evaluate --suite judge ... --judge-backend ragas --runs 3 ...
+```
+
+Judge metrics are LLM-graded and noisy, so the suite runs the grader N times and
+takes the **median** per metric, recording the spread (`judge_detail.spread`) —
+that measured variance is what justifies the wide tolerance bands in
+`eval_config.yaml`. Cost guardrails (`cost.max_judge_questions_per_run`,
+`max_usd_per_run`) are enforced **before** any grading. Generation is config-driven
+(`generation.provider`: `openai` | `echo`); the grader backend is `ragas` (real,
+lazy-imported) or `heuristic` (deterministic offline stub, **not** a real quality
+signal). The real RAGAS grader is wired but not exercised by tests — no test calls
+an LLM.

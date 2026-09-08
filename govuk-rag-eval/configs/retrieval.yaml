@@ -38,3 +38,9 @@ retrieval:
   retriever: dense           # dense | bm25 | hybrid  (dense implemented in step 1)
   top_k: 5                   # <-- regression demo target: 5 -> 2
   normalize: true            # cosine similarity via normalised vectors
+
+generation:                  # answer synthesis for the judge suite (step 4)
+  provider: openai           # openai | echo (deterministic offline stub)
+  model: gpt-4o-mini         # the generator model is a config value, not an import
+  temperature: 0.0
+  max_tokens: 512

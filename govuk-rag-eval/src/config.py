@@ -60,6 +60,16 @@ class RetrievalConfig:
 
 
 @dataclass(frozen=True)
+class GenerationConfig:
+    # Answer synthesis for the judge suite (build step 4). The model is a config
+    # value, not an import. `echo` is a deterministic offline stub for tests.
+    provider: str = "openai"          # openai | echo
+    model: str = "gpt-4o-mini"
+    temperature: float = 0.0
+    max_tokens: int = 512
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int = 42
     corpus: CorpusConfig = field(default_factory=CorpusConfig)
@@ -67,6 +77,7 @@ class Config:
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
     store: StoreConfig = field(default_factory=StoreConfig)
     retrieval: RetrievalConfig = field(default_factory=RetrievalConfig)
+    generation: GenerationConfig = field(default_factory=GenerationConfig)
 
     def config_fingerprint(self) -> str:
         """Stable short hash of the fields that affect index contents.
@@ -110,7 +121,9 @@ def load_config(path: str | Path) -> Config:
 
 
 def from_dict(raw: dict[str, Any]) -> Config:
-    top_allowed = {"seed", "corpus", "chunking", "embedding", "store", "retrieval"}
+    top_allowed = {
+        "seed", "corpus", "chunking", "embedding", "store", "retrieval", "generation",
+    }
     _require_keys(raw, top_allowed, "retrieval config (top level)")
     return Config(
         seed=int(raw.get("seed", 42)),
@@ -119,4 +132,5 @@ def from_dict(raw: dict[str, Any]) -> Config:
         embedding=_build_section(EmbeddingConfig, raw.get("embedding", {}) or {}, "embedding"),
         store=_build_section(StoreConfig, raw.get("store", {}) or {}, "store"),
         retrieval=_build_section(RetrievalConfig, raw.get("retrieval", {}) or {}, "retrieval"),
+        generation=_build_section(GenerationConfig, raw.get("generation", {}) or {}, "generation"),
     )
