@@ -111,10 +111,22 @@ python -m src.evaluate --suite judge \
     --index .index/ --judge-backend heuristic --runs 3 \
     --merge-into results/current.json
 
-# Real judge metrics (RAGAS) — needs OPENAI_API_KEY and the judge extras:
+# Real judge metrics (RAGAS) — needs a provider key and the judge extras:
 pip install -r requirements-judge.lock
-python -m src.evaluate --suite judge ... --judge-backend ragas --runs 3 ...
+python -m src.evaluate --suite judge ... --judge-backend ragas --judge-provider openai --runs 3 ...
+python -m src.evaluate --suite judge ... --judge-backend ragas --judge-provider anthropic --runs 3 ...
 ```
+
+**Provider is interchangeable — OpenAI or Anthropic.** Generation
+(`generation.provider`: `openai` | `anthropic` | `echo`) and the RAGAS judge
+(`--judge-provider`) both swap with a one-line change; leave `generation.model`
+blank to take the provider default (`gpt-4o-mini` / `claude-sonnet-5`). The CI
+gate activates on **either** `OPENAI_API_KEY` **or** `ANTHROPIC_API_KEY`. Caveat:
+**Anthropic has no embeddings API**, so retrieval embeddings stay OpenAI or the
+local `bge` — an Anthropic-only run pairs `embedding.provider: bge` (local, no
+key) with `generation.provider: anthropic`. (RAGAS `answer_relevancy` also needs
+an embeddings model, so a fully Anthropic judge still uses an embeddings backend
+for that one metric.)
 
 Judge metrics are LLM-graded and noisy, so the suite runs the grader N times and
 takes the **median** per metric, recording the spread (`judge_detail.spread`) —

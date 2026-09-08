@@ -92,18 +92,43 @@ class HeuristicGrader:
         return {m: acc[m] / len(samples) for m in self.metrics}
 
 
-class RagasGrader:
-    """Real judge metrics via RAGAS. Lazy-imported; needs OPENAI_API_KEY.
+_DEFAULT_JUDGE_MODEL = {"openai": "gpt-4o-mini", "anthropic": "claude-sonnet-5"}
 
+
+class RagasGrader:
+    """Real judge metrics via RAGAS. Lazy-imported; needs a provider key.
+
+    The judge LLM is interchangeable: `provider="openai"` (needs OPENAI_API_KEY)
+    or `provider="anthropic"` (needs ANTHROPIC_API_KEY, via langchain-anthropic).
     Not exercised by tests (they never call an LLM). This is the production
     grader the nightly / full-eval runs use.
+
+    Note: RAGAS `answer_relevancy` also needs an embeddings model. Anthropic has
+    no embeddings API, so an Anthropic judge still uses an embeddings backend
+    (OpenAI, or a local one) for that one metric — configure it in the RAGAS run
+    if you go Anthropic-only.
     """
 
     grader_id = "ragas"
     metrics = JUDGE_METRICS
 
-    def __init__(self, model: str = "gpt-4o-mini"):
-        self.model = model
+    def __init__(self, provider: str = "openai", model: str = ""):
+        if provider not in _DEFAULT_JUDGE_MODEL:
+            raise ValueError(f"Unknown judge provider: {provider!r}")
+        self.provider = provider
+        self.model = model or _DEFAULT_JUDGE_MODEL[provider]
+
+    def _llm(self):
+        """Build the RAGAS-wrapped LLM for the configured provider (lazy)."""
+        from ragas.llms import LangchainLLMWrapper
+
+        if self.provider == "anthropic":
+            from langchain_anthropic import ChatAnthropic
+
+            return LangchainLLMWrapper(ChatAnthropic(model=self.model))
+        from langchain_openai import ChatOpenAI
+
+        return LangchainLLMWrapper(ChatOpenAI(model=self.model))
 
     def grade(self, samples: Sequence[JudgeSample]) -> dict[str, float]:
         from datasets import Dataset  # lazy, heavy
@@ -126,6 +151,7 @@ class RagasGrader:
         result = ragas_evaluate(
             ds,
             metrics=[faithfulness, answer_relevancy, context_precision, answer_correctness],
+            llm=self._llm(),
         )
         return {m: float(result[m]) for m in self.metrics}
 
@@ -150,9 +176,9 @@ def run_judge(
     return {"metrics": metrics_out, "spread": spread, "runs": runs}
 
 
-def build_grader(backend: str, model: str = "gpt-4o-mini") -> Grader:
+def build_grader(backend: str, provider: str = "openai", model: str = "") -> Grader:
     if backend == "heuristic":
         return HeuristicGrader()
     if backend == "ragas":
-        return RagasGrader(model=model)
+        return RagasGrader(provider=provider, model=model)
     raise ValueError(f"Unknown judge backend: {backend!r}")

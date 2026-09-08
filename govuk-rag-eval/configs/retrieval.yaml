@@ -40,7 +40,9 @@ retrieval:
   normalize: true            # cosine similarity via normalised vectors
 
 generation:                  # answer synthesis for the judge suite (step 4)
-  provider: openai           # openai | echo (deterministic offline stub)
-  model: gpt-4o-mini         # the generator model is a config value, not an import
-  temperature: 0.0
+  provider: openai           # openai | anthropic | echo — interchangeable
+  model: ""                  # blank = provider default (gpt-4o-mini / claude-sonnet-5)
+  temperature: 0.0           # honoured by openai; ignored by anthropic (newer models)
   max_tokens: 512
+  # Anthropic has no embeddings API — for an Anthropic-only setup, also set
+  # embedding.provider: bge (local) above, and generation.provider: anthropic here.

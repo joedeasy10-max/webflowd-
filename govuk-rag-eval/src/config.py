@@ -63,9 +63,11 @@ class RetrievalConfig:
 class GenerationConfig:
     # Answer synthesis for the judge suite (build step 4). The model is a config
     # value, not an import. `echo` is a deterministic offline stub for tests.
-    provider: str = "openai"          # openai | echo
-    model: str = "gpt-4o-mini"
-    temperature: float = 0.0
+    # provider is interchangeable: openai | anthropic | echo. Leave `model`
+    # blank to use the provider's default (gpt-4o-mini / claude-sonnet-5).
+    provider: str = "openai"          # openai | anthropic | echo
+    model: str = ""                   # blank = provider default
+    temperature: float = 0.0          # applied only where the provider supports it
     max_tokens: int = 512
 
 

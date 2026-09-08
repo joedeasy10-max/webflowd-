@@ -98,3 +98,15 @@ def test_build_grader():
     assert J.build_grader("ragas").grader_id == "ragas"  # constructed, not called
     with pytest.raises(ValueError):
         J.build_grader("bogus")
+
+
+def test_ragas_grader_provider_selection_without_calling():
+    # Construction must not import the provider SDK or call an LLM.
+    openai_grader = J.build_grader("ragas", provider="openai")
+    anthropic_grader = J.build_grader("ragas", provider="anthropic")
+    assert openai_grader.provider == "openai"
+    assert openai_grader.model == "gpt-4o-mini"          # provider default
+    assert anthropic_grader.provider == "anthropic"
+    assert anthropic_grader.model == "claude-sonnet-5"   # provider default
+    with pytest.raises(ValueError):
+        J.build_grader("ragas", provider="bogus")

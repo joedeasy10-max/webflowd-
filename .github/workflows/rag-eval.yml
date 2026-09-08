@@ -5,10 +5,11 @@ name: RAG Evaluation
 # repo-root-relative paths (cache, hashFiles, git show, github-script,
 # upload-artifact) are prefixed explicitly.
 #
-# The whole pipeline is guarded on OPENAI_API_KEY being configured: without the
-# secret every real step is skipped and the job passes with a notice, so this
-# never becomes a red check on a repo that has not opted in. It activates once
-# the secret is set and a real corpus + golden set exist (build step 3).
+# The whole pipeline is guarded on an LLM provider key (OPENAI_API_KEY or
+# ANTHROPIC_API_KEY — interchangeable) being configured: without either, every
+# real step is skipped and the job passes with a notice, so this never becomes a
+# red check on a repo that has not opted in. It activates once a key is set and a
+# real corpus + golden set exist (build step 3).
 
 on:
   pull_request:
@@ -43,9 +44,11 @@ jobs:
       # on manual dispatch, or when a PR carries the `full-eval` label.
       RUN_JUDGE: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-eval') }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      # The gate needs the embedder key. Without it, skip every real step so the
-      # job stays green until the repo opts in (see header).
-      HAS_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # The gate needs an LLM provider key (OpenAI or Anthropic — the providers
+      # are interchangeable). Without either, skip every real step so the job
+      # stays green until the repo opts in (see header).
+      HAS_KEY: ${{ secrets.OPENAI_API_KEY != '' || secrets.ANTHROPIC_API_KEY != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -56,8 +59,8 @@ jobs:
       - name: Gate inactive notice
         if: env.HAS_KEY != 'true'
         run: |
-          echo "OPENAI_API_KEY is not configured — RAG eval gate is inactive."
-          echo "Set the secret and commit a baseline to activate (see govuk-rag-eval/results/README.md)."
+          echo "No LLM provider key (OPENAI_API_KEY / ANTHROPIC_API_KEY) — RAG eval gate is inactive."
+          echo "Set a key and commit a baseline to activate (see govuk-rag-eval/results/README.md)."
 
       - uses: actions/setup-python@v5
         if: env.HAS_KEY == 'true'
