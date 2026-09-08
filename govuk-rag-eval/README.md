@@ -22,7 +22,7 @@ Steps are defined in `BUILD.md` → "Build order". There are **8**.
 | 5 | **CI gate** — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 wired + proven end-to-end; activates with `OPENAI_API_KEY` + a real baseline |
 | 6 | Regression demos — 3 blocked PRs | 🟡 chunk-size demo proven offline (gate blocks); top_k/embedding demos need real data |
 | 7 | Experiment benchmark — `run_experiments.py` + table | 🟡 runner done + demoed; real table needs embeddings |
-| 8 | Corpus-drift workflow (`refresh-corpus.yml`) | ⬜ |
+| 8 | **Corpus-drift workflow** (`refresh-corpus.yml`) | 🟡 scaffolded — workflow + `refresh_corpus.py` + drift logic tested; runs once egress exists |
 
 The gate lives at the **repo root** workflow `.github/workflows/rag-eval.yml`
 (GitHub only runs workflows from the root; the steps `cd` into `govuk-rag-eval/`).
@@ -160,3 +160,21 @@ Real numbers for the four named experiments (`baseline`, `small_chunks`,
 `hybrid_bm25`, `reranked`) go here once embeddings are available; see
 `results/experiments/README.md`. The runner and its table are proven offline in
 `tests/test_run_experiments.py` (including the chunk-size effect).
+
+### Corpus-drift workflow (step 8)
+
+`.github/workflows/refresh-corpus.yml` re-crawls the slice weekly. If any page's
+content hash drifted, `scripts/refresh_corpus.py` rewrites
+`data/corpus/manifest.json` (preserving `fetched_at` for unchanged pages, so
+there are no spurious PRs) and the workflow opens a PR labelled `corpus-drift`.
+The RAG-eval gate's index cache keys on the manifest, so the eval then runs
+against the refreshed corpus automatically — catching quality drops caused by
+the *source content* moving, not just our own code.
+
+```bash
+python scripts/refresh_corpus.py --config configs/retrieval.yaml --summary-out corpus-drift.md
+```
+
+The crawl needs outbound `www.gov.uk` (fine on CI runners; no LLM key needed).
+The drift diff/merge/summary logic is pure and unit-tested offline
+(`tests/test_refresh_corpus.py`).
