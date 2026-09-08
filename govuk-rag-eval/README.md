@@ -16,10 +16,10 @@ Steps are defined in `BUILD.md` → "Build order". There are **8**.
 | # | Step | State |
 |---|------|-------|
 | 1 | **Ingest + retrieve** — crawl, chunk, index, `retrieve(question)` | ✅ done |
-| 2 | Retrieval metrics (hit@k, MRR, recall@k) on ~30 questions | ⬜ next |
-| 3 | Golden set to full size (150–300, hand-reviewed) | ⬜ |
+| 2 | **Retrieval metrics** (hit@5, MRR, recall@10) + `src/evaluate.py` | ✅ done |
+| 3 | Golden set to full size (150–300, hand-reviewed) | ⬜ next |
 | 4 | Generation + RAGAS judge metrics (median-of-3, measure variance) | ⬜ |
-| 5 | CI gate — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 files in place, not wired |
+| 5 | CI gate — wire `rag-eval.yml` + `compare.py`, commit a baseline | 🟡 evaluate + compare exist; needs a committed baseline + version alignment |
 | 6 | Regression demos — 3 blocked PRs | ⬜ |
 | 7 | Experiment benchmark — run all 4 configs, publish table | 🟡 configs stubbed |
 | 8 | Corpus-drift workflow (`refresh-corpus.yml`) | ⬜ |
@@ -71,6 +71,22 @@ hand.
 
 ## Layout
 
-See `BUILD.md` → "Repo structure". This tree currently implements step 1
-(`src/config.py`, `corpus.py`, `chunk.py`, `embed.py`, `store.py`, `ingest.py`,
-`retrieve.py`) plus the step-5 gate files.
+See `BUILD.md` → "Repo structure". This tree implements steps 1–2:
+step 1 (`src/config.py`, `corpus.py`, `chunk.py`, `embed.py`, `store.py`,
+`ingest.py`, `retrieve.py`) and step 2 (`src/golden.py`, `src/evaluate.py`,
+`src/metrics/retrieval.py`), plus the step-5 gate files.
+
+### Evaluate
+
+```bash
+python -m src.ingest    --config configs/retrieval.yaml --out .index/
+python -m src.evaluate  --suite retrieval \
+    --dataset data/golden/questions.jsonl \
+    --config configs/retrieval.yaml --index .index/ --out results/current.json
+```
+
+Retrieval metrics are deterministic and LLM-free, computed over the ranking the
+system actually returns (`retrieval.top_k`) — so a `top_k` regression shows up in
+`hit@5`/`recall@10`. Negatives (unanswerable questions) are excluded from these
+aggregates; refusal behaviour is a generation concern (step 4). Use `--limit` to
+cap questions in a dev loop.
