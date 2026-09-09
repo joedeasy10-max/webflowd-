@@ -5,7 +5,3 @@ pnpm-lock.yaml
 packages/core/migrations
 # Docs contain hand-formatted tables/diagrams — leave them as authored.
 *.md
-
-# Self-contained Python subproject with its own tooling (ruff/pytest); the
-# Webflow'd TypeScript formatter should not police its YAML/JSON.
-govuk-rag-eval
